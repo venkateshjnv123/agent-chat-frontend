@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agent Chat Frontend
 
-## Getting Started
+Responsive Galaxy-like chat client for durable agent and media-tool runs.
 
-First, run the development server:
+## Status
+
+Foundation scaffold: Next.js App Router, strict TypeScript, responsive empty chat shell, TanStack Query provider, typed API boundary, ephemeral Zustand stream store, Vitest, and Playwright wiring. Clerk and backend behavior follow as bounded vertical slices.
+
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm format:check
+```
 
-## Learn More
+Playwright is wired but smoke specs arrive with working backend flows:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture rules
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Components never issue raw first-party fetches.
+- `src/lib/api` attaches bearer tokens and validates responses.
+- TanStack Query owns server state; Zustand holds ephemeral token buffers only.
+- Backend owns Zod contracts; synchronized output lands in `src/contracts/generated`.
+- Realtime updates upsert by stable IDs. REST reconciles initial load, reconnect, expiry, and terminal state.
+- Client bundle contains no secrets.
 
-## Deploy on Vercel
+See [AGENTS.md](./AGENTS.md) for implementation constraints.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Planned repository shape
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+src/app/                  routes and providers
+src/components/chat/      shell, messages, composer
+src/components/tools/     registry-driven tool cards
+src/components/artifacts/ generated media display
+src/components/uploads/   P0.5 image uploads
+src/lib/api/              typed first-party API boundary
+src/lib/realtime/         subscription and reconciliation
+src/queries/              TanStack Query hooks
+src/stores/               ephemeral UI/stream state
+src/contracts/generated/  backend-owned generated contracts
+tests/                    component/unit tests
+e2e/                      exactly three smoke specs
+```
+
+## Environment
+
+Copy `.env.example`; never commit values. `NEXT_PUBLIC_API_BASE_URL` targets separately deployed backend. `CLERK_SECRET_KEY` is server-only and must never appear in client modules.
+
+## Declared cuts
+
+Search/pin, advanced artifact interactions, audio/video upload UI, broad animation polish, and more than three Playwright smoke specs. Recovery, three real Magica tools, skills, visible failures, and fidelity remain protected.

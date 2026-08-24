@@ -1,9 +1,26 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Repository Rules
 
-# This is NOT the Next.js you know
+## Stack and commands
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+- Next.js App Router, strict TypeScript, pnpm, Clerk, TanStack Query, Zustand, Zod, Vitest, Playwright.
+- Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` before handoff.
+- Run `pnpm format:check` and `git diff --check` before commit.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+## Non-negotiables
 
-<!-- END:nextjs-agent-rules -->
+- Zero raw first-party `fetch` in components. Use `src/lib/api/*` and TanStack Query.
+- TanStack Query owns server state. Zustand owns short-lived stream/UI state only.
+- Contracts come from `src/contracts/generated`; never redefine or hand-edit them.
+- Reconcile from REST on initial load, realtime reconnect, token expiry, and terminal event.
+- Merge messages, blocks, runs, and tools by stable IDs. Never blind-append realtime rows.
+- Hard reload during run must not create duplicate assistant or tool rows.
+- Keep secrets out of client bundle. Client code receives only intentional `NEXT_PUBLIC_*` variables.
+- Mirror input limits client-side, but backend remains authoritative.
+- One bounded vertical slice per task. Avoid multi-concern changes.
+
+## Required UI states
+
+- Composer: send, stop, disabled, error, retry, stopping.
+- Runs: queued, running, waiting, completed, failed, cancelled, stopping.
+- Tool cards: pending, running, completed, failed, cancelled.
+- Failed/cancelled turns remain visible and explainable.
