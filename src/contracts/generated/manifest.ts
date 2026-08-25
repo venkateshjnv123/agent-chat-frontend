@@ -7,7 +7,7 @@
  */
 
 export const CONTRACT_MANIFEST = {
-  "chat.ts": "8d2e89cf79f3452a",
+  "chat.ts": "89efbf0700da03ba",
   "common.ts": "a42e894c565f8e70",
   "credits.ts": "6fb17cf14896280d",
   "index.ts": "33f9e43b2ec837f1",

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build --webpack",
-    "start": "next start",
+    "dev": "node --use-system-ca ./node_modules/next/dist/bin/next dev --port 3000",
+    "build": "node --use-system-ca ./node_modules/next/dist/bin/next build --webpack",
+    "start": "node --use-system-ca ./node_modules/next/dist/bin/next start --port 3000",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@clerk/nextjs": "^7.8.0",
     "@tanstack/react-query": "^5.102.2",
+    "@trigger.dev/react-hooks": "4.5.12",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
