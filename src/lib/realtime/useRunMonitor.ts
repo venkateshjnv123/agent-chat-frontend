@@ -23,7 +23,6 @@ export function useRunMonitor({
   initialRealtimeToken,
   onTerminal,
 }: UseRunMonitorInput) {
-  const refreshAttempts = useRef({ runId: null as string | null, count: 0 });
   const terminalNotifiedFor = useRef<string | null>(null);
   const tokenQuery = useRealtimeToken(runId, Boolean(runId));
   const { data: tokenData, refetch: refetchToken } = tokenQuery;
@@ -48,27 +47,35 @@ export function useRunMonitor({
   const runQuery = useAgentRun(chatId, runId, realtimeDegraded);
 
   useEffect(() => {
-    if (refreshAttempts.current.runId !== runId) {
-      refreshAttempts.current = { runId: runId ?? null, count: 0 };
-    }
+    if (!runId || !realtime.error) return;
 
-    if (
-      !runId ||
-      !realtime.error ||
-      refreshAttempts.current.count >= MAX_TOKEN_REFRESH_ATTEMPTS
-    ) {
-      return;
-    }
+    let cancelled = false;
+    let timeout: number | undefined;
 
-    const attempt = refreshAttempts.current.count++;
-    const timeout = window.setTimeout(
-      () => {
-        void refetchToken();
-      },
-      Math.min(500 * 2 ** attempt, 4_000),
-    );
+    const refresh = async (attempt: number) => {
+      if (cancelled) return;
+      const result = await refetchToken();
 
-    return () => window.clearTimeout(timeout);
+      if (
+        cancelled ||
+        !result.error ||
+        attempt + 1 >= MAX_TOKEN_REFRESH_ATTEMPTS
+      ) {
+        return;
+      }
+
+      timeout = window.setTimeout(
+        () => void refresh(attempt + 1),
+        Math.min(500 * 2 ** (attempt + 1), 4_000),
+      );
+    };
+
+    timeout = window.setTimeout(() => void refresh(0), 500);
+
+    return () => {
+      cancelled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
   }, [realtime.error, refetchToken, runId]);
 
   useEffect(() => {

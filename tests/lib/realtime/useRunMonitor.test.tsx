@@ -1,5 +1,5 @@
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useRunMonitor } from "@/lib/realtime/useRunMonitor";
 
@@ -42,6 +42,8 @@ describe("useRunMonitor", () => {
     mocks.refetchToken.mockReset();
     mocks.tokenData = undefined;
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it("subscribes with the Trigger run id while keeping the internal id for REST", () => {
     renderHook(() =>
@@ -87,5 +89,36 @@ describe("useRunMonitor", () => {
       "trigger-run-fresh",
       expect.objectContaining({ accessToken: "token-fresh", enabled: true }),
     );
+  });
+
+  it("bounds realtime recovery and polls REST while degraded", async () => {
+    vi.useFakeTimers();
+    mocks.realtime.mockReturnValue({
+      error: new Error("socket closed"),
+      run: undefined,
+    });
+    mocks.refetchToken.mockResolvedValue({ error: new Error("token failed") });
+
+    renderHook(() =>
+      useRunMonitor({
+        chatId: "chat-1",
+        runId: "internal-run-1",
+        initialRealtimeRunId: "trigger-run-1",
+        initialRealtimeToken: "token-1",
+        onTerminal: vi.fn(),
+      }),
+    );
+
+    expect(mocks.agentRun).toHaveBeenCalledWith(
+      "chat-1",
+      "internal-run-1",
+      true,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000);
+    });
+
+    expect(mocks.refetchToken).toHaveBeenCalledTimes(3);
   });
 });

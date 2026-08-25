@@ -7,10 +7,11 @@
  */
 
 export const CONTRACT_MANIFEST = {
-  "chat.ts": "89efbf0700da03ba",
+  "attachments.ts": "2222a170f7be230c",
+  "chat.ts": "2a72a3dd50cc753f",
   "common.ts": "a42e894c565f8e70",
   "credits.ts": "6fb17cf14896280d",
-  "index.ts": "33f9e43b2ec837f1",
+  "index.ts": "cb1533bae4b6fa5a",
   "service.ts": "469a60dd5219f106",
-  "waitpoint.ts": "b482bee13c50a3d8"
+  "waitpoint.ts": "f7f0550986eb5370"
 } as const;

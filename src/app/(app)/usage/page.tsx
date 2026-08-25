@@ -1,10 +1,5 @@
-import { RouteState } from "@/components/routes/RouteState";
+import { CreditsView } from "@/components/credits/CreditsView";
 
 export default function UsagePage() {
-  return (
-    <RouteState
-      title="Usage and credits"
-      description="Credit balance and ledger arrive in Phase 2."
-    />
-  );
+  return <CreditsView />;
 }

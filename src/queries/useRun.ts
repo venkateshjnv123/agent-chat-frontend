@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { cancelRun, getRun, mintRealtimeToken } from "@/lib/api/runs";
+import { cancelRun, getRun, mintRealtimeToken, retryRun } from "@/lib/api/runs";
 import { useApiClient } from "@/lib/api/useApiClient";
 import { isTerminalRunStatus } from "@/lib/runs/status";
 
@@ -44,5 +44,13 @@ export function useCancelRun() {
 
   return useMutation({
     mutationFn: (runId: string) => cancelRun(client, runId),
+  });
+}
+
+export function useRetryRun() {
+  const client = useApiClient();
+
+  return useMutation({
+    mutationFn: (runId: string) => retryRun(client, runId),
   });
 }

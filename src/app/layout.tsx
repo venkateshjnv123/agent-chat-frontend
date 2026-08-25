@@ -4,8 +4,8 @@ import "./globals.css";
 import { AppProviders } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Galaxy Agent Chat",
-  description: "Durable agent chat with recoverable tool runs",
+  title: "Magica",
+  description: "Your AI worker",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

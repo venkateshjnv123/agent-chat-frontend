@@ -6,6 +6,7 @@ import type {
   ToolInvocation,
   ToolResult,
 } from "@/contracts/generated";
+import { formatCredits } from "@/lib/credits/format";
 
 type RenderedResult = {
   summary: ReactNode;
@@ -91,7 +92,7 @@ export function ToolCard({ invocation }: { invocation: ToolInvocation }) {
         {invocation.creditUsed > 0 ? (
           <div className="border-t border-black/8 px-3.5 py-2">
             <span className="inline-flex rounded-full bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">
-              {formatCredits(invocation.creditUsed)} credits
+              {formatCredits(invocation.creditUsed, { precision: 4 })} credits
             </span>
           </div>
         ) : null}
@@ -360,8 +361,4 @@ function formatDuration(startedAt: string | null, completedAt: string | null) {
 
   const seconds = milliseconds / 1_000;
   return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
-}
-
-function formatCredits(microcredits: number) {
-  return `${(microcredits / 1_000_000).toFixed(4)}M`;
 }

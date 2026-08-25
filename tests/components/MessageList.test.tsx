@@ -76,6 +76,45 @@ describe("MessageList", () => {
     expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
   });
 
+  it("restores attached user images above message text", () => {
+    render(
+      <MessageList
+        messages={[
+          message("user-with-image", 1, "Animate this", {
+            role: "USER",
+            attachments: [
+              {
+                id: "attachment-1",
+                status: "READY",
+                filename: "puppy.png",
+                mimeType: "image/png",
+                fileSize: 123,
+                width: 100,
+                height: 100,
+                url: "https://assets.example.test/puppy.png",
+                order: 0,
+                createdAt: "2026-08-26T00:00:00.000Z",
+                userMessage: null,
+              },
+            ],
+          }),
+        ]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    const image = screen.getByRole("img", { name: "puppy.png" });
+    const text = screen.getByText("Animate this");
+    expect(
+      image.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("groups tool steps and removes duplicate markdown media links", () => {
     const imageUrl = "https://assets.example.test/result.png";
 
@@ -146,6 +185,7 @@ function message(
   return {
     aiModel: null,
     assets: null,
+    attachments: [],
     chatId: "chat-1",
     content,
     contentBlocks: null,

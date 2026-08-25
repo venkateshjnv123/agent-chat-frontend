@@ -2,6 +2,7 @@ import {
   AgentRunStateSchema,
   CancelRunResponseSchema,
   RealtimeTokenResponseSchema,
+  RetryRunResponseSchema,
 } from "@/contracts/generated";
 
 import type { ApiClient } from "./client";
@@ -39,6 +40,18 @@ export function cancelRun(
   return client.request(
     `api/v1/runs/${encodeURIComponent(runId)}/cancel`,
     CancelRunResponseSchema,
+    { method: "POST", signal },
+  );
+}
+
+export function retryRun(
+  client: ApiClient,
+  runId: string,
+  signal?: AbortSignal,
+) {
+  return client.request(
+    `api/v1/runs/${encodeURIComponent(runId)}/retry`,
+    RetryRunResponseSchema,
     { method: "POST", signal },
   );
 }
