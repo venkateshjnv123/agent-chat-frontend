@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 
 import type { Message } from "@/contracts/generated";
 
+import { StepGroup } from "./StepGroup";
+
 type MessageListProps = {
   messages: Message[];
   isLoading: boolean;
@@ -111,37 +113,41 @@ function MessageBubble({ message }: { message: Message }) {
   const waiting = isMessagePending(message);
   const failed = message.status === "FAILED";
   const cancelled = message.status === "CANCELLED";
-  const content =
-    message.content || (waiting ? "Thinking…" : "No response content");
+  const hasToolInvocations = message.toolInvocations.length > 0;
+  const renderedContent = isUser
+    ? message.content
+    : stripRenderedMediaMarkdown(message);
+  const showContent =
+    Boolean(renderedContent) || (!waiting && !hasToolInvocations);
+  const content = renderedContent || (waiting ? "" : "No response content");
 
   return (
     <article
       className={`flex ${isUser ? "justify-end" : "justify-start"}`}
       data-sequence={message.sequence}
     >
-      <div
-        className={`max-w-[85%] md:max-w-[75%] ${isUser ? "text-right" : "text-left"}`}
-      >
-        <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-6 whitespace-pre-wrap ${
-            isUser
-              ? "bg-[#e9e9e5] text-[#22221f]"
-              : failed
-                ? "border border-red-200 bg-red-50 text-red-900"
-                : cancelled
-                  ? "border border-black/10 bg-white text-black/50"
-                  : "bg-white text-[#22221f] shadow-sm ring-1 ring-black/5"
-          }`}
-        >
-          {content}
-          {message.toolInvocations.length > 0 ? (
-            <p className="mt-2 border-t border-black/8 pt-2 text-xs text-black/45">
-              {message.toolInvocations.length} tool{" "}
-              {message.toolInvocations.length === 1 ? "step" : "steps"}
-            </p>
+      <div className="w-full max-w-[85%] text-left md:max-w-[75%]">
+        <div className="grid gap-2">
+          {!isUser ? <StepGroup message={message} /> : null}
+          {showContent ? (
+            <div
+              className={`rounded-2xl px-4 py-3 text-left text-sm leading-6 whitespace-pre-wrap ${
+                isUser
+                  ? "bg-[#e9e9e5] text-[#22221f]"
+                  : failed
+                    ? "border border-red-200 bg-red-50 text-red-900"
+                    : cancelled
+                      ? "border border-black/10 bg-white text-black/50"
+                      : "bg-white text-[#22221f] shadow-sm ring-1 ring-black/5"
+              }`}
+            >
+              {content}
+            </div>
           ) : null}
         </div>
-        <p className="mt-1 px-1 text-[11px] text-black/35">
+        <p
+          className={`mt-1 px-1 text-[11px] text-black/35 ${isUser ? "text-right" : "text-left"}`}
+        >
           {formatTime(message.createdAt)}
           {waiting ? " · Working" : null}
           {failed ? " · Failed" : null}
@@ -150,6 +156,30 @@ function MessageBubble({ message }: { message: Message }) {
       </div>
     </article>
   );
+}
+
+function stripRenderedMediaMarkdown(message: Message) {
+  const renderedUrls = new Set(
+    message.toolInvocations.flatMap((invocation) => {
+      const result = invocation.result;
+
+      return result &&
+        (result.type === "image" ||
+          result.type === "video" ||
+          result.type === "audio")
+        ? result.urls
+        : [];
+    }),
+  );
+
+  if (renderedUrls.size === 0) return message.content;
+
+  return message.content
+    .replace(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g, (markdown, url: string) =>
+      renderedUrls.has(url) ? "" : markdown,
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function isMessagePending(message: Message) {

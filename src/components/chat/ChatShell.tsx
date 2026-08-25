@@ -1,8 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { SendMessageRequest } from "@/contracts/generated";
 import { useRunMonitor } from "@/lib/realtime/useRunMonitor";
@@ -28,9 +27,10 @@ type PendingLogicalSend = {
 };
 
 export function ChatShell({ chatId, title }: ChatShellProps = {}) {
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const messagesQuery = useMessages(chatId ?? "");
+  const [createdChatId, setCreatedChatId] = useState<string>();
+  const currentChatId = chatId ?? createdChatId;
+  const messagesQuery = useMessages(currentChatId ?? "");
   const sendMutation = useSendMessage();
   const cancelMutation = useCancelRun();
   const activeHandle = useActiveRunStore((state) => state.handle);
@@ -50,7 +50,9 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
     [messagesQuery.messages],
   );
   const storedHandle =
-    chatId && activeHandle?.chatId === chatId ? activeHandle : null;
+    currentChatId && activeHandle?.chatId === currentChatId
+      ? activeHandle
+      : null;
   const runId = storedHandle?.runId ?? persistedActiveRunId;
 
   const reconcileTerminal = useCallback(
@@ -60,22 +62,26 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
         current === terminalRunId ? null : current,
       );
 
-      if (!chatId) return;
+      if (!currentChatId) return;
 
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.chats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.chat(chatId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.messages(chatId) }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.run(chatId, terminalRunId),
+          queryKey: queryKeys.chat(currentChatId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages(currentChatId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.run(currentChatId, terminalRunId),
         }),
       ]);
     },
-    [chatId, clearActiveHandle, queryClient],
+    [currentChatId, clearActiveHandle, queryClient],
   );
 
   const monitor = useRunMonitor({
-    chatId,
+    chatId: currentChatId,
     runId,
     initialRealtimeRunId: storedHandle?.realtimeRunId,
     initialRealtimeToken: storedHandle?.realtimeToken,
@@ -89,22 +95,37 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
     stoppingRunId === runId ||
     monitor.run?.status === "CANCELLING";
 
+  useEffect(() => {
+    if (!currentChatId || !isRunActive) return;
+
+    const reconcileMessages = () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.messages(currentChatId),
+      });
+    };
+
+    reconcileMessages();
+    const interval = window.setInterval(reconcileMessages, 2_000);
+
+    return () => window.clearInterval(interval);
+  }, [currentChatId, isRunActive, queryClient]);
+
   const handleSend = async (rawContent: string) => {
     const content = rawContent.trim();
     const previousSend = pendingSend.current;
     const idempotencyKey =
       previousSend !== null &&
-      previousSend.chatId === chatId &&
+      previousSend.chatId === currentChatId &&
       previousSend.content === content
         ? previousSend.idempotencyKey
         : crypto.randomUUID();
     const request: SendMessageRequest = {
       content,
       idempotencyKey,
-      ...(chatId ? { chatId } : {}),
+      ...(currentChatId ? { chatId: currentChatId } : {}),
     };
 
-    pendingSend.current = { chatId, content, idempotencyKey };
+    pendingSend.current = { chatId: currentChatId, content, idempotencyKey };
 
     const response = await sendMutation.mutateAsync(request);
 
@@ -123,8 +144,13 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
       queryKey: queryKeys.messages(response.chatId),
     });
 
-    if (!chatId) {
-      router.replace(`/chat/${encodeURIComponent(response.chatId)}`);
+    if (!currentChatId) {
+      setCreatedChatId(response.chatId);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `/chat/${encodeURIComponent(response.chatId)}`,
+      );
     }
   };
 
@@ -138,9 +164,9 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
 
       if (isTerminalRunStatus(response.status)) {
         reconcileTerminal(runId);
-      } else if (chatId) {
+      } else if (currentChatId) {
         void queryClient.invalidateQueries({
-          queryKey: queryKeys.run(chatId, runId),
+          queryKey: queryKeys.run(currentChatId, runId),
         });
       }
     } catch (error) {
@@ -153,14 +179,14 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
 
   return (
     <main className="grid h-dvh overflow-hidden bg-[#f7f7f5] text-[#22221f] md:grid-cols-[260px_1fr]">
-      <Sidebar currentChatId={chatId} />
+      <Sidebar currentChatId={currentChatId} />
 
       <section className="flex min-h-0 min-w-0 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/8 px-4 md:px-6">
           <div className="min-w-0">
             <p className="text-sm font-medium">Agent Chat</p>
             <p className="truncate text-xs text-black/45">
-              {chatId ? (title ?? "Conversation") : "New conversation"}
+              {currentChatId ? (title ?? "Conversation") : "New conversation"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -181,7 +207,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
 
         <MessageList
           messages={messagesQuery.messages}
-          isLoading={Boolean(chatId && messagesQuery.isPending)}
+          isLoading={Boolean(currentChatId && messagesQuery.isPending)}
           error={messagesQuery.error}
           hasOlder={messagesQuery.hasNextPage}
           isLoadingOlder={messagesQuery.isFetchingNextPage}
@@ -191,7 +217,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
         />
 
         <Composer
-          context={chatId ? "chat" : "new"}
+          context={currentChatId ? "chat" : "new"}
           isSending={sendMutation.isPending}
           isRunActive={isRunActive}
           isStopping={isStopping}

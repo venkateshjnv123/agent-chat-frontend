@@ -99,11 +99,18 @@ export function Composer({
         ) : (
           <button
             type="submit"
-            aria-label="Send message"
+            aria-label={isSending ? "Sending message" : "Send message"}
             disabled={!canSend}
-            className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#252520] text-white transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-30"
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#252520] text-white transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-50"
           >
-            ↑
+            {isSending ? (
+              <span
+                aria-hidden="true"
+                className="size-4 animate-spin rounded-full border-2 border-white border-r-transparent"
+              />
+            ) : (
+              "↑"
+            )}
           </button>
         )}
       </form>

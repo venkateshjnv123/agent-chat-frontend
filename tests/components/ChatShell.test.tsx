@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,12 +12,7 @@ const mocks = vi.hoisted(() => ({
   fetchChats: vi.fn(),
   fetchMessages: vi.fn(),
   messages: [] as Array<Record<string, unknown>>,
-  replace: vi.fn(),
   sendMessage: vi.fn(),
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mocks.replace }),
 }));
 
 vi.mock("@clerk/nextjs", () => ({
@@ -73,16 +68,16 @@ describe("ChatShell", () => {
     mocks.cancelRun.mockReset();
     mocks.fetchChats.mockReset();
     mocks.fetchMessages.mockReset();
-    mocks.replace.mockReset();
     mocks.sendMessage.mockReset();
     mocks.messages = [];
+    window.history.replaceState(null, "", "/chat");
     useActiveRunStore.setState({ handle: null });
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
       "11111111-1111-4111-8111-111111111111",
     );
   });
 
-  it("reuses the logical-send key after failure and replaces the new-chat route", async () => {
+  it("reuses the logical-send key and updates a new-chat URL without route navigation", async () => {
     const user = userEvent.setup();
     mocks.sendMessage
       .mockRejectedValueOnce(new Error("Temporary failure"))
@@ -106,9 +101,7 @@ describe("ChatShell", () => {
 
     await user.click(send);
 
-    await waitFor(() => {
-      expect(mocks.replace).toHaveBeenCalledWith("/chat/chat-1");
-    });
+    await waitFor(() => expect(window.location.pathname).toBe("/chat/chat-1"));
     const firstRequest = mocks.sendMessage.mock.calls[0]?.[0];
     const retryRequest = mocks.sendMessage.mock.calls[1]?.[0];
     expect(firstRequest).toEqual({
@@ -133,8 +126,10 @@ describe("ChatShell", () => {
       runId: "run-1",
     });
 
-    renderShell(<ChatShell chatId="chat-1" title="Report" />);
-    await user.click(screen.getByRole("button", { name: "Stop run" }));
+    const rendered = renderShell(<ChatShell chatId="chat-1" title="Report" />);
+    await user.click(
+      within(rendered.container).getByRole("button", { name: "Stop run" }),
+    );
 
     await waitFor(() => {
       expect(mocks.cancelRun).toHaveBeenCalledWith("run-1");

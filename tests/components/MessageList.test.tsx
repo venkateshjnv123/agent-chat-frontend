@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MessageList } from "@/components/chat/MessageList";
@@ -30,9 +30,119 @@ describe("MessageList", () => {
       expect.stringContaining("Newest message"),
     ]);
   });
+
+  it("keeps wrapped user-message text left aligned inside a right-side bubble", () => {
+    const rendered = render(
+      <MessageList
+        messages={[
+          message("user", 1, "A long user message that wraps", {
+            role: "USER",
+          }),
+        ]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    const bubble = within(rendered.container).getByText(
+      "A long user message that wraps",
+    );
+    const timestamp = bubble.closest("article")?.querySelector("p");
+
+    expect(bubble).toHaveClass("whitespace-pre-wrap");
+    expect(bubble).toHaveClass("text-left");
+    expect(timestamp).toHaveClass("text-right");
+  });
+
+  it("shows research progress instead of an empty thinking bubble", () => {
+    render(
+      <MessageList
+        messages={[message("pending", 1, "", { status: "PENDING" })]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    expect(screen.getByText("Working · 1 step")).toBeInTheDocument();
+    expect(screen.getByText("Researching request")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
+  });
+
+  it("groups tool steps and removes duplicate markdown media links", () => {
+    const imageUrl = "https://assets.example.test/result.png";
+
+    const rendered = render(
+      <MessageList
+        messages={[
+          message(
+            "completed",
+            1,
+            `Created it.\n\n![generated result](${imageUrl})\n\nDone.`,
+            {
+              toolInvocations: [
+                {
+                  id: "tool-1",
+                  toolName: "gpt_image_2_text",
+                  rendererKey: "image",
+                  state: "COMPLETED",
+                  sanitizedInput: { prompt: "A red cube" },
+                  result: {
+                    type: "image",
+                    urls: [imageUrl],
+                    width: 1024,
+                    height: 1024,
+                    mimeType: "image/png",
+                  },
+                  resultUrl: imageUrl,
+                  userMessage: null,
+                  creditUsed: 210_000,
+                  startedAt: "2026-08-25T10:00:00.000Z",
+                  completedAt: "2026-08-25T10:00:10.000Z",
+                },
+              ],
+            },
+          ),
+        ]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    expect(
+      within(rendered.container).getByText("Working · 1 step"),
+    ).toBeInTheDocument();
+    expect(
+      within(rendered.container).getByText(/Created it/),
+    ).toHaveTextContent("Created it. Done.");
+    expect(
+      within(rendered.container).queryByText(/generated result/),
+    ).not.toBeInTheDocument();
+    expect(
+      within(rendered.container).getByRole("img", {
+        name: "Gpt Image 2 Text result 1",
+      }),
+    ).toBeInTheDocument();
+  });
 });
 
-function message(id: string, sequence: number, content: string): Message {
+function message(
+  id: string,
+  sequence: number,
+  content: string,
+  overrides: Partial<Message> = {},
+): Message {
   return {
     aiModel: null,
     assets: null,
@@ -49,5 +159,6 @@ function message(id: string, sequence: number, content: string): Message {
     status: "SUCCESS",
     tokenUsage: null,
     toolInvocations: [],
+    ...overrides,
   };
 }
