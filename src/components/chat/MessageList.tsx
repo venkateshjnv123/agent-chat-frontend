@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
+import Markdown from "react-markdown";
 
 import type { Message } from "@/contracts/generated";
 import type { AssistantStreamBuffer } from "@/stores/assistantStream";
@@ -175,18 +176,15 @@ function MessageBubble({
               )}
             </div>
           ) : null}
-          {presentation.media.length > 0 ? (
+          {isUser && presentation.media.length > 0 ? (
             <InlineMedia items={presentation.media} />
           ) : null}
           {!isUser && message.runId ? (
             <MessageWaitpoint message={message} />
           ) : null}
-          {!isUser ? (
-            <StepGroup message={message} streamBuffer={matchingStream} />
-          ) : null}
           {showContent ? (
             <div
-              className={`max-w-full min-w-0 overflow-hidden px-4 py-3 text-left text-[14px] leading-6 [overflow-wrap:anywhere] break-words whitespace-pre-wrap ${
+              className={`max-w-full min-w-0 overflow-hidden px-4 py-3 text-left text-[14px] leading-6 [overflow-wrap:anywhere] break-words ${
                 isUser
                   ? "rounded-[24px] bg-[#ececea] text-[#22221f]"
                   : failed
@@ -196,8 +194,14 @@ function MessageBubble({
                       : "rounded-2xl border border-black/10 bg-white text-[#22221f] shadow-[0_1px_3px_rgba(0,0,0,.05)]"
               }`}
             >
-              {renderedContent}
+              <MessageText content={renderedContent} isUser={isUser} />
             </div>
+          ) : null}
+          {!isUser ? (
+            <StepGroup message={message} streamBuffer={matchingStream} />
+          ) : null}
+          {!isUser && presentation.media.length > 0 ? (
+            <InlineMedia items={presentation.media} />
           ) : null}
         </div>
         {!isUser && failed ? <RetryTurn message={message} /> : null}
@@ -211,6 +215,29 @@ function MessageBubble({
         </p>
       </div>
     </article>
+  );
+}
+
+function MessageText({
+  content,
+  isUser,
+}: {
+  content: string;
+  isUser: boolean;
+}) {
+  if (isUser)
+    return <span className="text-left whitespace-pre-wrap">{content}</span>;
+
+  return (
+    <div className="[&_a]:text-blue-700 [&_a]:underline [&_a]:underline-offset-2 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1 [&_code]:py-0.5 [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-black/5 [&_pre]:p-3 [&_strong]:font-semibold [&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6">
+      <Markdown
+        components={{
+          a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
+        }}
+      >
+        {content}
+      </Markdown>
+    </div>
   );
 }
 

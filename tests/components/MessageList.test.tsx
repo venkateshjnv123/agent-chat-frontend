@@ -198,7 +198,7 @@ describe("MessageList", () => {
       within(rendered.container).getByText("Completed · 1 step"),
     ).toBeInTheDocument();
     expect(
-      within(rendered.container).getByText(/Created it/),
+      within(rendered.container).getByText(/Created it/).parentElement,
     ).toHaveTextContent("Created it. Done.");
     expect(
       within(rendered.container).queryByText(/generated result/),
@@ -250,6 +250,60 @@ describe("MessageList", () => {
       approval.compareDocumentPosition(execution) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("renders assistant plan markdown between approval history and execution progress", () => {
+    const rendered = render(
+      <MessageList
+        messages={[
+          message(
+            "completed-plan",
+            1,
+            "**Plan**\n\n1. **Generate image**\n2. Crop the generated image",
+            {
+              runId: "run-1",
+              toolInvocations: [
+                {
+                  id: "tool-1",
+                  toolName: "gpt_image_2_text",
+                  rendererKey: "image",
+                  state: "COMPLETED",
+                  sanitizedInput: { prompt: "A tiny robot" },
+                  result: null,
+                  resultUrl: null,
+                  userMessage: null,
+                  creditUsed: 0,
+                  startedAt: "2026-08-25T10:00:00.000Z",
+                  completedAt: "2026-08-25T10:00:10.000Z",
+                },
+              ],
+            },
+          ),
+        ]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    const approval = within(rendered.container).getByTestId("approval-history");
+    const plan = within(rendered.container).getByText("Plan");
+    const execution = within(rendered.container).getByText(
+      "Completed · 1 step",
+    );
+
+    expect(plan.tagName).toBe("STRONG");
+    expect(
+      approval.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      plan.compareDocumentPosition(execution) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(rendered.container).not.toHaveTextContent("**Plan**");
   });
 
   it("renders live text/progress once and lets terminal REST content replace it", () => {
