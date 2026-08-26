@@ -67,6 +67,8 @@ describe("RetryTurn", () => {
       </QueryClientProvider>,
     );
 
+    expect(screen.getByText("Provider unavailable.")).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Retry turn" }));
 
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("run-1"));

@@ -26,11 +26,7 @@ export function RetryTurn({ message }: { message: Message }) {
   if (run.status !== "FAILED") return null;
 
   if (!run.retryable) {
-    return (
-      <p className="mt-2 px-1 text-[11px] text-red-700/70">
-        Retry unavailable for this failure.
-      </p>
-    );
+    return <FailureNotice message={run.userMessage} retryable={false} />;
   }
 
   const retry = async () => {
@@ -70,19 +66,45 @@ export function RetryTurn({ message }: { message: Message }) {
   };
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
-      <button
-        type="button"
-        disabled={retryMutation.isPending}
-        onClick={() => void retry()}
-        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[12px] font-medium text-red-800 hover:bg-red-50 disabled:cursor-wait disabled:opacity-50"
-      >
-        {retryMutation.isPending ? "Retrying…" : "Retry turn"}
-      </button>
-      {notice ? <p className="text-[11px] text-black/45">{notice}</p> : null}
-      {retryMutation.error ? (
-        <p className="text-[11px] text-red-700">
-          {retryMutation.error.message}
+    <div className="mt-2 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2.5">
+      <p className="text-[12px] leading-5 text-red-900">
+        {run.userMessage ?? "This turn failed before it finished."}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={retryMutation.isPending}
+          onClick={() => void retry()}
+          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[12px] font-medium text-red-800 hover:bg-red-50 disabled:cursor-wait disabled:opacity-50"
+        >
+          {retryMutation.isPending ? "Retrying…" : "Retry turn"}
+        </button>
+        {notice ? <p className="text-[11px] text-black/45">{notice}</p> : null}
+        {retryMutation.error ? (
+          <p className="text-[11px] text-red-700">
+            {retryMutation.error.message}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FailureNotice({
+  message,
+  retryable,
+}: {
+  message: string | null;
+  retryable: boolean;
+}) {
+  return (
+    <div className="mt-2 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2.5">
+      <p className="text-[12px] leading-5 text-red-900">
+        {message ?? "This turn failed before it finished."}
+      </p>
+      {!retryable ? (
+        <p className="mt-1 text-[11px] text-red-700/70">
+          Retry unavailable for this failure.
         </p>
       ) : null}
     </div>

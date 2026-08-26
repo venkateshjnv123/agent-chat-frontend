@@ -17,6 +17,15 @@ export function StepGroup({
   const [open, setOpen] = useState(true);
   const waiting =
     message.status === "PENDING" || message.status === "STREAMING";
+  const failed = message.status === "FAILED";
+  const cancelled = message.status === "CANCELLED";
+  const stateLabel = waiting
+    ? "Working"
+    : failed
+      ? "Failed"
+      : cancelled
+        ? "Cancelled"
+        : "Completed";
   const thinkingBlocks =
     message.contentBlocks?.filter((block) => block.type === "thinking") ?? [];
   const streamedThinking =
@@ -65,13 +74,21 @@ export function StepGroup({
             aria-hidden="true"
             className="size-3 animate-spin rounded-full border-2 border-blue-600 border-r-transparent"
           />
+        ) : failed ? (
+          <span aria-hidden="true" className="text-red-600">
+            !
+          </span>
+        ) : cancelled ? (
+          <span aria-hidden="true" className="text-black/40">
+            ×
+          </span>
         ) : (
           <span aria-hidden="true" className="text-emerald-600">
             ✓
           </span>
         )}
         <span className="flex-1">
-          Working · {stepCount} {stepCount === 1 ? "step" : "steps"}
+          {stateLabel} · {stepCount} {stepCount === 1 ? "step" : "steps"}
         </span>
         <span
           aria-hidden="true"

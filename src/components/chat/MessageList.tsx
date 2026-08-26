@@ -178,11 +178,11 @@ function MessageBubble({
           {presentation.media.length > 0 ? (
             <InlineMedia items={presentation.media} />
           ) : null}
-          {!isUser ? (
-            <StepGroup message={message} streamBuffer={matchingStream} />
-          ) : null}
           {!isUser && message.runId ? (
             <MessageWaitpoint message={message} />
+          ) : null}
+          {!isUser ? (
+            <StepGroup message={message} streamBuffer={matchingStream} />
           ) : null}
           {showContent ? (
             <div

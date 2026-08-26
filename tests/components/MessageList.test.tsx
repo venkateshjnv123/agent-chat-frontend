@@ -6,7 +6,10 @@ import type { Message } from "@/contracts/generated";
 import type { AssistantStreamBuffer } from "@/stores/assistantStream";
 
 vi.mock("@/components/approval/MessageWaitpoint", () => ({
-  MessageWaitpoint: () => null,
+  MessageWaitpoint: ({ message }: { message: { runId: string | null } }) =>
+    message.runId ? (
+      <div data-testid="approval-history">Approval history</div>
+    ) : null,
 }));
 
 describe("MessageList", () => {
@@ -192,7 +195,7 @@ describe("MessageList", () => {
     );
 
     expect(
-      within(rendered.container).getByText("Working · 1 step"),
+      within(rendered.container).getByText("Completed · 1 step"),
     ).toBeInTheDocument();
     expect(
       within(rendered.container).getByText(/Created it/),
@@ -205,6 +208,48 @@ describe("MessageList", () => {
         name: "Gpt Image 2 Text result 1",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("renders approval history before execution progress", () => {
+    const rendered = render(
+      <MessageList
+        messages={[
+          message("pending-execution", 1, "", {
+            runId: "run-1",
+            status: "STREAMING",
+            toolInvocations: [
+              {
+                id: "tool-1",
+                toolName: "gpt_image_2_text",
+                rendererKey: "image",
+                state: "RUNNING",
+                sanitizedInput: { prompt: "A tiny robot" },
+                result: null,
+                resultUrl: null,
+                userMessage: null,
+                creditUsed: 0,
+                startedAt: "2026-08-25T10:00:00.000Z",
+                completedAt: null,
+              },
+            ],
+          }),
+        ]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    const approval = within(rendered.container).getByTestId("approval-history");
+    const execution = within(rendered.container).getByText("Working · 1 step");
+
+    expect(
+      approval.compareDocumentPosition(execution) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("renders live text/progress once and lets terminal REST content replace it", () => {
