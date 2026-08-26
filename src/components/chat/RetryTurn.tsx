@@ -7,6 +7,7 @@ import type { Message } from "@/contracts/generated";
 import { queryKeys } from "@/queries/queryKeys";
 import { useAgentRun, useRetryRun } from "@/queries/useRun";
 import { useActiveRunStore } from "@/stores/activeRun";
+import { useAssistantStreamStore } from "@/stores/assistantStream";
 
 export function RetryTurn({ message }: { message: Message }) {
   const queryClient = useQueryClient();
@@ -17,6 +18,7 @@ export function RetryTurn({ message }: { message: Message }) {
   );
   const retryMutation = useRetryRun();
   const setActiveHandle = useActiveRunStore((state) => state.setHandle);
+  const clearAssistantStream = useAssistantStreamStore((state) => state.clear);
   const [notice, setNotice] = useState<string | null>(null);
 
   if (!message.runId || runQuery.isPending || runQuery.error) return null;
@@ -43,9 +45,11 @@ export function RetryTurn({ message }: { message: Message }) {
         return;
       }
 
+      clearAssistantStream(response.runId);
       setActiveHandle({
         chatId: response.chatId,
         runId: response.runId,
+        messageId: response.messageId,
         ...(response.realtimeRunId
           ? { realtimeRunId: response.realtimeRunId }
           : {}),

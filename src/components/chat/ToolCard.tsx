@@ -46,10 +46,10 @@ export function ToolCard({ invocation }: { invocation: ToolInvocation }) {
 
   return (
     <section
-      className="text-left"
+      className="max-w-full min-w-0 overflow-hidden text-left"
       aria-label={`${formatToolName(invocation.toolName)} tool step`}
     >
-      <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+      <div className="max-w-full min-w-0 overflow-hidden rounded-xl border border-[#ededed] bg-white">
         <div className="flex min-w-0 items-center gap-2 px-3.5 py-3">
           <RendererGlyph rendererKey={invocation.rendererKey} />
           <p className="min-w-0 flex-1 truncate text-sm font-medium text-[#292925]">
@@ -159,14 +159,14 @@ function renderImageResult(
         ? "1 image ready"
         : `${result.urls.length} images ready`,
     media: (
-      <div className="grid max-w-[420px] gap-3">
+      <div className="grid w-full max-w-[420px] min-w-0 gap-3">
         {result.urls.map((url, index) => (
           <a
             key={url}
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="block overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition hover:shadow-md"
+            className="block max-w-full min-w-0 overflow-hidden rounded-xl border border-[#ededed] bg-white transition hover:shadow-sm"
             aria-label={`Open ${formatToolName(invocation.toolName)} image ${index + 1}`}
           >
             <Image
@@ -196,11 +196,11 @@ function renderVideoResult(
         ? "1 video ready"
         : `${result.urls.length} videos ready`,
     media: (
-      <div className="grid max-w-xl gap-3">
+      <div className="grid w-full max-w-xl min-w-0 gap-3">
         {result.urls.map((url, index) => (
           <div
             key={url}
-            className="overflow-hidden rounded-2xl border border-black/10 bg-black shadow-sm"
+            className="max-w-full min-w-0 overflow-hidden rounded-xl border border-[#ededed] bg-black"
           >
             <video
               controls
@@ -236,7 +236,7 @@ function renderAudioResult(
         ? "1 audio result ready"
         : `${result.urls.length} audio results ready`,
     media: (
-      <div className="grid max-w-xl gap-3">
+      <div className="grid w-full max-w-xl min-w-0 gap-3">
         {result.urls.map((url, index) => (
           <audio
             key={url}
@@ -309,11 +309,14 @@ function DataList({
   return (
     <dl className={`grid gap-2 ${className}`}>
       {entries.map(([key, value]) => (
-        <div key={key} className="grid grid-cols-[minmax(0,120px)_1fr] gap-3">
+        <div
+          key={key}
+          className="grid min-w-0 grid-cols-[minmax(0,120px)_minmax(0,1fr)] gap-3"
+        >
           <dt className="truncate text-xs font-medium text-black/45">
             {formatFieldName(key)}
           </dt>
-          <dd className="min-w-0 text-xs break-words text-black/70">
+          <dd className="max-w-full min-w-0 text-xs [overflow-wrap:anywhere] break-words text-black/70">
             {formatDataValue(value)}
           </dd>
         </div>

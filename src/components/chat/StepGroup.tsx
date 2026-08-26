@@ -2,24 +2,54 @@
 
 import { useState } from "react";
 
-import type { Message } from "@/contracts/generated";
+import type { Message, ToolInvocation } from "@/contracts/generated";
+import type { AssistantStreamBuffer } from "@/stores/assistantStream";
 
 import { ToolCard } from "./ToolCard";
 
-export function StepGroup({ message }: { message: Message }) {
+export function StepGroup({
+  message,
+  streamBuffer,
+}: {
+  message: Message;
+  streamBuffer?: AssistantStreamBuffer;
+}) {
   const [open, setOpen] = useState(true);
   const waiting =
     message.status === "PENDING" || message.status === "STREAMING";
   const thinkingBlocks =
     message.contentBlocks?.filter((block) => block.type === "thinking") ?? [];
-  const syntheticResearch =
-    waiting &&
-    thinkingBlocks.length === 0 &&
-    message.toolInvocations.length === 0;
+  const streamedThinking =
+    streamBuffer?.activity
+      .filter((event) => event.type === "thinking")
+      .map((event) => event.text)
+      .join("") ?? "";
+  const durableThinking = thinkingBlocks
+    .map((block) => block.thinking)
+    .join("");
+  const showStreamedThinking =
+    streamedThinking.length > 0 &&
+    streamedThinking.length >= durableThinking.length;
+  const progressEvent = streamBuffer?.activity.findLast(
+    (event) => event.type === "progress",
+  );
+  const currentStep =
+    progressEvent?.currentStep ?? streamBuffer?.metadata?.currentStep;
+  const progress = progressEvent?.progress ?? streamBuffer?.metadata?.progress;
+  const showProgress =
+    waiting && (Boolean(currentStep) || progress !== undefined);
+  const persistedToolIds = new Set(
+    message.toolInvocations.map((invocation) => invocation.id),
+  );
+  const liveTools = latestLiveTools(streamBuffer).filter(
+    (invocation) => !persistedToolIds.has(invocation.id),
+  );
+  const thinkingCount = showStreamedThinking ? 1 : thinkingBlocks.length;
   const stepCount =
-    thinkingBlocks.length +
+    thinkingCount +
     message.toolInvocations.length +
-    (syntheticResearch ? 1 : 0);
+    liveTools.length +
+    (showProgress ? 1 : 0);
 
   if (stepCount === 0) return null;
 
@@ -27,9 +57,9 @@ export function StepGroup({ message }: { message: Message }) {
     <details
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
-      className="group rounded-2xl border border-black/10 bg-white/70 shadow-sm"
+      className="group max-w-full min-w-0 overflow-hidden rounded-xl border border-[#ededed] bg-white"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-3 text-sm font-medium text-black/55 select-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 px-4 py-3 text-[14px] leading-5 font-medium text-[#585858] select-none [&::-webkit-details-marker]:hidden">
         {waiting ? (
           <span
             aria-hidden="true"
@@ -51,17 +81,33 @@ export function StepGroup({ message }: { message: Message }) {
         </span>
       </summary>
 
-      <div className="grid gap-2 border-t border-black/8 p-2.5">
-        {syntheticResearch ? <ResearchStep active /> : null}
-        {thinkingBlocks.map((block, index) => (
-          <ResearchStep
-            key={`${message.id}:thinking:${index}`}
+      <div className="grid max-w-full min-w-0 gap-2 border-t border-[#ededed] p-2.5">
+        {showProgress ? (
+          <ProgressStep currentStep={currentStep} progress={progress} />
+        ) : null}
+        {showStreamedThinking ? (
+          <ThinkingStep
             active={waiting}
-            detail={block.thinking}
-            durationSeconds={message.metadata?.thinkingDurationSeconds}
+            detail={streamedThinking}
+            durationSeconds={
+              streamBuffer?.metadata?.thinkingDurationSeconds ??
+              message.metadata?.thinkingDurationSeconds
+            }
           />
-        ))}
+        ) : (
+          thinkingBlocks.map((block, index) => (
+            <ThinkingStep
+              key={`${message.id}:thinking:${index}`}
+              active={waiting}
+              detail={block.thinking}
+              durationSeconds={message.metadata?.thinkingDurationSeconds}
+            />
+          ))
+        )}
         {message.toolInvocations.map((invocation) => (
+          <ToolCard key={invocation.id} invocation={invocation} />
+        ))}
+        {liveTools.map((invocation) => (
           <ToolCard key={invocation.id} invocation={invocation} />
         ))}
       </div>
@@ -69,7 +115,91 @@ export function StepGroup({ message }: { message: Message }) {
   );
 }
 
-function ResearchStep({
+function ProgressStep({
+  currentStep,
+  progress,
+}: {
+  currentStep?: string | null;
+  progress?: number;
+}) {
+  const percentage = progress === undefined ? null : Math.round(progress * 100);
+
+  return (
+    <section
+      aria-label="Run progress"
+      className="max-w-full min-w-0 overflow-hidden rounded-[10px] border border-[#ededed] bg-white px-3.5 py-3"
+    >
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="size-3 animate-spin rounded-full border-2 border-blue-600 border-r-transparent"
+        />
+        <p className="min-w-0 flex-1 truncate text-sm font-medium text-black/70">
+          {currentStep ?? "Working"}
+        </p>
+        {percentage !== null ? (
+          <span className="text-[11px] text-black/40 tabular-nums">
+            {percentage}%
+          </span>
+        ) : null}
+      </div>
+      {percentage !== null ? (
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percentage}
+          className="mt-2 h-1 overflow-hidden rounded-full bg-black/5"
+        >
+          <div
+            className="h-full rounded-full bg-blue-600 transition-[width]"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function latestLiveTools(streamBuffer?: AssistantStreamBuffer) {
+  const latest = new Map<string, ToolInvocation>();
+
+  for (const event of streamBuffer?.activity ?? []) {
+    if (event.type !== "tool") continue;
+
+    latest.set(event.toolCallId, {
+      id: event.toolCallId,
+      toolName: event.toolName,
+      rendererKey:
+        event.result?.type === "image" ||
+        event.result?.type === "video" ||
+        event.result?.type === "audio" ||
+        event.result?.type === "text"
+          ? event.result.type
+          : event.result?.type === "data"
+            ? "schema"
+            : "generic",
+      state: event.state,
+      sanitizedInput: {},
+      result: event.result,
+      resultUrl:
+        event.result &&
+        (event.result.type === "image" ||
+          event.result.type === "video" ||
+          event.result.type === "audio")
+          ? (event.result.urls[0] ?? null)
+          : null,
+      userMessage: null,
+      creditUsed: 0,
+      startedAt: null,
+      completedAt: null,
+    });
+  }
+
+  return [...latest.values()];
+}
+
+function ThinkingStep({
   active,
   detail,
   durationSeconds,
@@ -80,8 +210,8 @@ function ResearchStep({
 }) {
   return (
     <section
-      aria-label="Research step"
-      className="rounded-xl border border-black/8 bg-white px-3.5 py-3"
+      aria-label="Thinking step"
+      className="max-w-full min-w-0 overflow-hidden rounded-[10px] border border-[#ededed] bg-white px-3.5 py-3"
     >
       <div className="flex items-center gap-2">
         <span
@@ -92,13 +222,8 @@ function ResearchStep({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-black/75">
-            {active ? "Researching request" : "Research complete"}
+            {active ? "Thinking" : "Thinking complete"}
           </p>
-          {!detail && active ? (
-            <p className="mt-0.5 text-xs text-black/45">
-              Understanding intent and selecting best tools…
-            </p>
-          ) : null}
         </div>
         {active ? (
           <span
@@ -117,7 +242,7 @@ function ResearchStep({
         ) : null}
       </div>
       {detail ? (
-        <p className="mt-3 border-t border-black/8 pt-3 text-xs leading-5 whitespace-pre-wrap text-black/60 italic">
+        <p className="mt-3 max-w-full overflow-hidden border-t border-[#ededed] pt-3 text-xs leading-5 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-black/60 italic">
           {detail}
         </p>
       ) : null}

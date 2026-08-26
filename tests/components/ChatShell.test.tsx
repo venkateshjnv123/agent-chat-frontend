@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@clerk/nextjs", () => ({
+  useUser: () => ({ user: { fullName: "Venkatesh Patnala" } }),
   UserButton: () => <span>Account menu</span>,
 }));
 
@@ -96,7 +97,7 @@ describe("ChatShell", () => {
     );
   });
 
-  it("sends with planning hidden from the Magica composer", async () => {
+  it("keeps the removed Plan toggle out of the UI and sends planMode false", async () => {
     const user = userEvent.setup();
     mocks.sendMessage.mockResolvedValue({
       chatId: "chat-1",
@@ -185,6 +186,7 @@ describe("ChatShell", () => {
     expect(retryRequest).toEqual(firstRequest);
     expect(useActiveRunStore.getState().handle).toEqual({
       chatId: "chat-1",
+      messageId: "message-1",
       realtimeRunId: "trigger-run-1",
       realtimeToken: "token-1",
       runId: "run-1",
@@ -196,6 +198,7 @@ describe("ChatShell", () => {
     mocks.cancelRun.mockResolvedValue({ runId: "run-1", status: "CANCELLED" });
     useActiveRunStore.getState().setHandle({
       chatId: "chat-1",
+      messageId: "message-1",
       realtimeToken: "token-1",
       runId: "run-1",
     });

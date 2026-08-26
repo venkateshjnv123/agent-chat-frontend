@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "magicaCircular";
+  src: url("https://app.magica.com/_next/static/media/fa0964b80d605be7-s.p.woff2")
+    format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 500;
+}
+
+@font-face {
+  font-family: "magicaCircular";
+  src: url("https://app.magica.com/_next/static/media/0a3f18f7d13a96e0-s.p.woff2")
+    format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: "magicaCircular";
+  src: url("https://app.magica.com/_next/static/media/7c2be0ddfdcd1761-s.p.woff2")
+    format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
 :root {
   --background: #fafafa;
   --foreground: #22221f;
@@ -9,8 +36,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+    "magicaCircular", Arial, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
@@ -19,12 +46,26 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   margin: 0;
+  overflow-x: hidden;
+}
+
+html,
+body {
+  min-width: 0;
+  width: 100%;
+}
+
+img,
+video,
+audio,
+svg {
+  max-width: 100%;
 }
 
 button,
 input,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
 button,

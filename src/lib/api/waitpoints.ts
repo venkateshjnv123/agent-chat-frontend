@@ -1,21 +1,21 @@
 import {
   ResolveWaitpointRequestSchema,
   ResolveWaitpointResponseSchema,
-  WaitpointSchema,
+  WaitpointHistorySchema,
   type ResolveWaitpointRequest,
 } from "@/contracts/generated";
 
 import { ApiError, type ApiClient } from "./client";
 
-export async function getRunWaitpoint(
+export async function getRunWaitpoints(
   client: ApiClient,
   runId: string,
   signal?: AbortSignal,
 ) {
   try {
     return await client.request(
-      `api/v1/runs/${encodeURIComponent(runId)}/waitpoint`,
-      WaitpointSchema,
+      `api/v1/runs/${encodeURIComponent(runId)}/waitpoints`,
+      WaitpointHistorySchema,
       { signal },
     );
   } catch (error) {

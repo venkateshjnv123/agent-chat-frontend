@@ -3,6 +3,7 @@ import { create } from "zustand";
 export type ActiveRunHandle = {
   chatId: string;
   runId: string;
+  messageId: string;
   realtimeRunId?: string;
   realtimeToken: string;
 };

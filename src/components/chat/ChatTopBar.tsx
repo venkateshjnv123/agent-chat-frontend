@@ -14,38 +14,40 @@ export function ChatTopBar({
   onOpenSidebar,
 }: ChatTopBarProps) {
   return (
-    <header className="flex h-[62px] shrink-0 items-center justify-between px-5 md:px-7">
+    <header className="flex h-[60px] shrink-0 items-center px-4 md:px-6">
       <div className="flex items-center gap-1">
         <button
           type="button"
           aria-label="Open sidebar"
           onClick={onOpenSidebar}
-          className="grid size-9 place-items-center rounded-xl text-[#5f5f5b] hover:bg-black/[0.035] md:hidden"
+          className="grid size-8 place-items-center rounded-[10px] text-[#585858] hover:bg-[#f7f7f7] md:hidden"
         >
           <LineIcon name="panel" className="size-[19px]" />
         </button>
         <button
           type="button"
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2 text-[14px] font-medium text-[#292926] hover:bg-black/[0.035]"
+          className="inline-flex h-7 items-center gap-1.5 rounded-[10px] bg-[#f7f7f7] px-2 text-[14px] font-normal text-[#1b1b1b] hover:bg-[#f1f1f1]"
         >
           Magica Auto
           <LineIcon name="chevron-down" className="size-4 text-[#777773]" />
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div
+        className={`flex items-center gap-2 ${showFolder ? "ml-auto" : "ml-auto md:ml-2"}`}
+      >
         {showFolder ? (
           <button
             type="button"
             aria-label="Task assets"
-            className="grid size-9 place-items-center rounded-full text-[#74746f] hover:bg-black/[0.04]"
+            className="grid size-8 place-items-center rounded-full text-[#585858] hover:bg-[#f7f7f7]"
           >
             <LineIcon name="folder" className="size-[18px]" />
           </button>
         ) : null}
         <Link
           href="/usage"
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-black/8 bg-[#fafafa] px-3.5 text-[13px] font-medium text-[#555550] shadow-sm hover:bg-white"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[#fafafa] px-3 text-[14px] font-normal text-[#1b1b1b] hover:bg-[#f1f1f1]"
         >
           <span aria-hidden="true" className="text-[#6654f4]">
             ✦

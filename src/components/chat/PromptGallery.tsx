@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 const CATEGORIES = [
-  "Advertising & Marketing",
+  "All",
+  "Viral Video Formats",
   "Video Special Effects",
   "Content Creation",
   "Branding & Design",
@@ -12,48 +14,58 @@ const CATEGORIES = [
 
 const CARDS = [
   {
-    title: "Create a product promo",
-    description: "Turn a product image into a polished advertising concept.",
-    style: "from-[#efcaa2] via-[#f6e8d6] to-[#7992a8]",
-    accent: "bg-[#151515]",
+    title: "Create PPTs",
+    description: "Turn any topic into a beautifully designed presentation",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787662857905__Create_PPTs_thumbnail.jpg",
   },
   {
-    title: "Make an AI video",
-    description: "Build a cinematic short from a simple written idea.",
-    style: "from-[#97918b] via-[#393735] to-[#111111]",
-    accent: "bg-[#f3a63b]",
+    title: "Generate a Music Track",
+    description: "Pick any vibe — turn it into an AI generated original track",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787662870588__Generate_a_Music_Track_thumbnail.jpg",
   },
   {
-    title: "Design social content",
-    description: "Create scroll-stopping visuals sized for your channels.",
-    style: "from-[#88a2ff] via-[#d7d6ff] to-[#ffcfc1]",
-    accent: "bg-[#7459ff]",
+    title: "Global Pop Star Music Video",
+    description: "Become the lead in a fast-cut, globe-trotting music video",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787576473690__Global_Pop_Star_Music_Video_thumbnail.jpg",
   },
   {
-    title: "Edit a campaign image",
-    description: "Restyle, clean up, or expand an existing visual.",
-    style: "from-[#292a34] via-[#664553] to-[#d98d6f]",
-    accent: "bg-[#f4efe9]",
+    title: "Fashion Lookbook",
+    description: "Beat-synced Y2K editorial lookbook with rapid outfit changes",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787576531164__Fashion_Lookbook_thumbnail.jpg",
+  },
+  {
+    title: "Multi-Shot Product Commercial",
+    description: "Create a fast-cut, glossy commercial",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787572876277__Multi-Shot_Product_Commercial_thumbnail.jpg",
+  },
+  {
+    title: "Glass Jar Editorial Portrait",
+    description: "Striking, goldfish-filled fashion concept",
+    image:
+      "https://galaxy-prod.tlcdn.com/original-assets/image/galaxymainsiteexamples/explore_ideas/thumbnails/video_1787572876713__Glass_Jar_Editorial_Portrait_thumbnail.jpg",
   },
 ] as const;
 
 export function PromptGallery() {
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>(
-    CATEGORIES[0],
-  );
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("All");
 
   return (
-    <section className="mx-auto mt-[52px] w-full max-w-[1250px] px-2 pb-14">
-      <div className="flex items-center justify-center gap-7 overflow-x-auto border-b border-black/8 px-2">
+    <section className="mx-auto mt-8 w-full max-w-[900px] px-2 pb-14 md:px-0">
+      <div className="flex items-center justify-start gap-8 overflow-x-auto px-2 md:justify-center">
         {CATEGORIES.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setCategory(item)}
-            className={`relative shrink-0 px-1 pb-3 text-[13px] transition ${
+            className={`shrink-0 px-1 py-2 text-[14px] leading-5 transition ${
               category === item
-                ? "font-medium text-[#22221f] after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-px after:bg-[#22221f]"
-                : "text-[#878783] hover:text-[#444440]"
+                ? "font-medium text-[#1b1b1b]"
+                : "font-normal text-[#585858] hover:text-[#1b1b1b]"
             }`}
           >
             {item}
@@ -61,32 +73,26 @@ export function PromptGallery() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {CARDS.map((card, index) => (
-          <article key={card.title} className="group min-w-0">
-            <div
-              className={`relative aspect-[1.24/1] overflow-hidden rounded-2xl bg-gradient-to-br ${card.style}`}
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_68%_26%,rgba(255,255,255,.5),transparent_30%)]" />
-              <div className="absolute top-[16%] left-[12%] h-[62%] w-[76%] rotate-[-3deg] rounded-xl border border-white/30 bg-black/15 shadow-2xl backdrop-blur-[2px] transition duration-300 group-hover:scale-[1.02] group-hover:rotate-0">
-                <div className="flex h-8 items-center gap-1.5 border-b border-white/20 px-3">
-                  <span className="size-1.5 rounded-full bg-white/70" />
-                  <span className="size-1.5 rounded-full bg-white/45" />
-                  <span className="size-1.5 rounded-full bg-white/25" />
-                </div>
-                <div className="grid h-[calc(100%_-_2rem)] place-items-center">
-                  <span
-                    className={`grid size-12 place-items-center rounded-2xl text-xl text-white shadow-xl ${card.accent}`}
-                  >
-                    {index === 1 ? "▶" : index === 2 ? "Aa" : "✦"}
-                  </span>
-                </div>
-              </div>
+      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-4 md:mt-6 lg:grid-cols-3 lg:gap-y-5">
+        {CARDS.map((card) => (
+          <article
+            key={card.title}
+            className="group min-w-0 overflow-hidden rounded-[14px] border border-[#ededed] bg-white"
+          >
+            <div className="relative aspect-video overflow-hidden bg-[#f7f7f7]">
+              <Image
+                unoptimized
+                fill
+                sizes="(max-width: 640px) 100vw, 300px"
+                src={card.image}
+                alt=""
+                className="object-cover transition duration-300 group-hover:scale-[1.015]"
+              />
             </div>
-            <h2 className="mt-3 truncate text-[14px] font-medium text-[#30302d]">
+            <h2 className="mt-2 truncate px-2 text-[14px] leading-5 font-medium text-[#1b1b1b]">
               {card.title}
             </h2>
-            <p className="mt-1 line-clamp-1 text-[12px] text-[#8b8b87]">
+            <p className="line-clamp-1 px-2 pb-2 text-[14px] leading-5 text-[#585858]">
               {card.description}
             </p>
           </article>

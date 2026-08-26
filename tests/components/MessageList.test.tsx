@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MessageList } from "@/components/chat/MessageList";
 import type { Message } from "@/contracts/generated";
+import type { AssistantStreamBuffer } from "@/stores/assistantStream";
+
+vi.mock("@/components/approval/MessageWaitpoint", () => ({
+  MessageWaitpoint: () => null,
+}));
 
 describe("MessageList", () => {
   it("renders newest-first API data as an oldest-to-newest conversation", () => {
@@ -58,7 +63,7 @@ describe("MessageList", () => {
     expect(timestamp).toHaveClass("text-right");
   });
 
-  it("shows research progress instead of an empty thinking bubble", () => {
+  it("does not invent research activity for an empty pending message", () => {
     render(
       <MessageList
         messages={[message("pending", 1, "", { status: "PENDING" })]}
@@ -71,8 +76,8 @@ describe("MessageList", () => {
       />,
     );
 
-    expect(screen.getByText("Working · 1 step")).toBeInTheDocument();
-    expect(screen.getByText("Researching request")).toBeInTheDocument();
+    expect(screen.queryByText(/Working ·/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Researching request")).not.toBeInTheDocument();
     expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
   });
 
@@ -80,24 +85,29 @@ describe("MessageList", () => {
     render(
       <MessageList
         messages={[
-          message("user-with-image", 1, "Animate this", {
-            role: "USER",
-            attachments: [
-              {
-                id: "attachment-1",
-                status: "READY",
-                filename: "puppy.png",
-                mimeType: "image/png",
-                fileSize: 123,
-                width: 100,
-                height: 100,
-                url: "https://assets.example.test/puppy.png",
-                order: 0,
-                createdAt: "2026-08-26T00:00:00.000Z",
-                userMessage: null,
-              },
-            ],
-          }),
+          message(
+            "user-with-image",
+            1,
+            "Animate this\n\nAttached images:\n1.",
+            {
+              role: "USER",
+              attachments: [
+                {
+                  id: "attachment-1",
+                  status: "READY",
+                  filename: "puppy.png",
+                  mimeType: "image/png",
+                  fileSize: 123,
+                  width: 100,
+                  height: 100,
+                  url: "https://assets.example.test/puppy.png",
+                  order: 0,
+                  createdAt: "2026-08-26T00:00:00.000Z",
+                  userMessage: null,
+                },
+              ],
+            },
+          ),
         ]}
         isLoading={false}
         error={null}
@@ -113,6 +123,28 @@ describe("MessageList", () => {
     expect(
       image.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.queryByText(/Attached images/i)).not.toBeInTheDocument();
+  });
+
+  it("renders a bare generated-media URL as media instead of chat text", () => {
+    const imageUrl = "https://assets.example.test/generated-result.png";
+
+    render(
+      <MessageList
+        messages={[message("generated-image", 1, `Done.\n\n${imageUrl}`)]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+      />,
+    );
+
+    expect(
+      screen.getByRole("img", { name: "Generated media" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(imageUrl)).not.toBeInTheDocument();
   });
 
   it("groups tool steps and removes duplicate markdown media links", () => {
@@ -173,6 +205,60 @@ describe("MessageList", () => {
         name: "Gpt Image 2 Text result 1",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("renders live text/progress once and lets terminal REST content replace it", () => {
+    const pending = message("assistant-1", 1, "", {
+      runId: "run-1",
+      status: "STREAMING",
+    });
+    const streamBuffer: AssistantStreamBuffer = {
+      runId: "run-1",
+      messageId: "assistant-1",
+      text: "Streaming answer",
+      textSequence: 2,
+      activity: [
+        {
+          runId: "run-1",
+          messageId: "assistant-1",
+          sequence: 1,
+          type: "progress",
+          stage: "responding",
+          currentStep: "Writing response",
+          progress: 0.5,
+        },
+      ],
+      activitySequence: 1,
+      metadata: null,
+    };
+    const props = {
+      isLoading: false,
+      error: null,
+      hasOlder: false,
+      isLoadingOlder: false,
+      onLoadOlder: vi.fn(),
+      realtimeDegraded: false,
+      streamBuffer,
+    };
+    const rendered = render(<MessageList {...props} messages={[pending]} />);
+
+    expect(screen.getByText("Streaming answer")).toBeInTheDocument();
+    expect(screen.getByText("Writing response")).toBeInTheDocument();
+    expect(screen.queryAllByText("Streaming answer")).toHaveLength(1);
+
+    rendered.rerender(
+      <MessageList
+        {...props}
+        messages={[
+          message("assistant-1", 1, "Saved terminal answer", {
+            runId: "run-1",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Saved terminal answer")).toBeInTheDocument();
+    expect(screen.queryByText("Streaming answer")).not.toBeInTheDocument();
   });
 });
 

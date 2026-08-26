@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { listCreditLedger } from "@/lib/api/credits";
 import { createApiClient } from "@/lib/api/client";
-import { getRunWaitpoint, resolveWaitpoint } from "@/lib/api/waitpoints";
+import { getRunWaitpoints, resolveWaitpoint } from "@/lib/api/waitpoints";
 
 describe("Phase 2 API clients", () => {
   it("forwards the opaque ledger cursor", async () => {
@@ -41,7 +41,7 @@ describe("Phase 2 API clients", () => {
       ),
     });
 
-    await expect(getRunWaitpoint(client, "run-1")).resolves.toBeNull();
+    await expect(getRunWaitpoints(client, "run-1")).resolves.toBeNull();
   });
 
   it("sends the same resolve key in body and idempotency header", async () => {

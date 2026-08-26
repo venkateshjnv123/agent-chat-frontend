@@ -11,7 +11,10 @@ vi.mock("@/queries/useAttachments", () => ({
 }));
 
 describe("Composer", () => {
-  beforeEach(() => mocks.uploadAttachment.mockReset());
+  beforeEach(() => {
+    mocks.uploadAttachment.mockReset();
+    sessionStorage.clear();
+  });
 
   it("replaces the send arrow with a loader while the send is pending", async () => {
     const user = userEvent.setup();
@@ -78,13 +81,17 @@ describe("Composer", () => {
     await user.type(screen.getByLabelText("Message"), "Animate this image");
     await user.click(screen.getByRole("button", { name: "Send message" }));
 
-    expect(onSend).toHaveBeenCalledWith("Animate this image", ["attachment-1"]);
+    expect(onSend).toHaveBeenCalledWith(
+      "Animate this image",
+      ["attachment-1"],
+      false,
+    );
     expect(
       screen.queryByRole("img", { name: "puppy.png" }),
     ).not.toBeInTheDocument();
   });
 
-  it("matches the reference controls and sends without a visible plan mode", async () => {
+  it("matches Magica's composer controls and sends plan mode disabled", async () => {
     const user = userEvent.setup();
     const onSend = vi.fn().mockResolvedValue(undefined);
     render(
@@ -126,6 +133,6 @@ describe("Composer", () => {
     await user.type(screen.getByLabelText("Message"), "Build a campaign image");
     await user.click(screen.getByRole("button", { name: "Send message" }));
 
-    expect(onSend).toHaveBeenCalledWith("Build a campaign image", []);
+    expect(onSend).toHaveBeenCalledWith("Build a campaign image", [], false);
   });
 });

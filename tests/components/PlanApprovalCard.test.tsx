@@ -39,6 +39,32 @@ describe("PlanApprovalCard", () => {
     ).toBeGreaterThanOrEqual(8);
   });
 
+  it("renders every supported resolution in Magica action order", () => {
+    render(
+      <PlanApprovalCard
+        waitpoint={waitpoint({
+          supportedResolutions: ["RUN_ALL", "STEP_BY_STEP", "REQUEST_CHANGES"],
+        })}
+        isSubmitting={false}
+        error={null}
+        onResolve={vi.fn()}
+      />,
+    );
+
+    const actionLabels = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim())
+      .filter((label) =>
+        ["Request Changes", "Step by Step", "Run All"].includes(label ?? ""),
+      );
+
+    expect(actionLabels).toEqual([
+      "Request Changes",
+      "Step by Step",
+      "Run All",
+    ]);
+  });
+
   it("scopes Enter to the card and keeps textarea Enter as a newline", async () => {
     const user = userEvent.setup();
     const onResolve = vi.fn().mockResolvedValue(undefined);
@@ -161,16 +187,28 @@ function waitpoint(overrides: Partial<Waitpoint> = {}): Waitpoint {
       overview: "Generate a cube, then crop it.",
       steps: [
         {
+          id: "step_1",
           n: 1,
+          toolName: "gpt_image_2_text",
           title: "Generate cube",
           description: "Create one high-quality image.",
+          dependsOn: [],
+          input: { prompt: "red cube" },
           estimateCredits: 210_720,
+          status: "PENDING",
         },
         {
+          id: "step_2",
           n: 2,
+          toolName: "crop_image",
           title: "Crop cube",
           description: "Crop generated image to its left half.",
+          dependsOn: ["step_1"],
+          input: {
+            image_url: { $fromStep: "step_1", path: "result.urls.0" },
+          },
           estimateCredits: 5_000,
+          status: "PENDING",
         },
       ],
       totalEstimate: 215_720,

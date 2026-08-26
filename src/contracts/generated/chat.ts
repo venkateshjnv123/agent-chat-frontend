@@ -194,6 +194,7 @@ export const ChatSummarySchema = z.object({
   id: z.string(),
   title: z.string().nullable(),
   modelId: z.string(),
+  pinned: z.boolean().default(false),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -219,6 +220,30 @@ export const CreateChatRequestSchema = z.object({
   title: z.string().min(1).max(200).optional(),
 });
 
+const OptionalSearchQuerySchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().trim().min(1).max(200).optional(),
+);
+
+export const ListChatsQuerySchema = z.object({
+  cursor: z.string().min(1).optional(),
+  q: OptionalSearchQuerySchema,
+});
+
+export const UpdateChatRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).nullable().optional(),
+    pinned: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => value.title !== undefined || value.pinned !== undefined);
+
+export const DeleteChatResponseSchema = z.object({
+  id: z.string(),
+  deleted: z.literal(true),
+});
+
 export const SendMessageRequestSchema = z.object({
   /**
    * Omitted on a first send: the backend creates the chat in the same
@@ -229,7 +254,11 @@ export const SendMessageRequestSchema = z.object({
   content: z.string().min(1).max(16_000),
   /** Client-generated, reused when retrying the same logical send. */
   idempotencyKey: z.string().min(8).max(128),
-  attachmentIds: z.array(z.string()).max(10).optional(),
+  attachmentIds: z
+    .array(z.string())
+    .max(10)
+    .refine((ids) => new Set(ids).size === ids.length, "must be unique")
+    .optional(),
   /**
    * Composer plan mode. When set, a turn that wants to run tools pauses and
    * shows its plan for approval before spending anything.
@@ -310,6 +339,7 @@ export type Asset = z.infer<typeof AssetSchema>;
 export type ToolInvocation = z.infer<typeof ToolInvocationSchema>;
 export type Message = z.infer<typeof MessageSchema>;
 export type ChatSummary = z.infer<typeof ChatSummarySchema>;
+export type UpdateChatRequest = z.infer<typeof UpdateChatRequestSchema>;
 export type AgentRunState = z.infer<typeof AgentRunStateSchema>;
 export type SendMessageRequest = z.infer<typeof SendMessageRequestSchema>;
 export type SendMessageResponse = z.infer<typeof SendMessageResponseSchema>;

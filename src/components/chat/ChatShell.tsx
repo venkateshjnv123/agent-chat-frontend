@@ -12,6 +12,7 @@ import { useMessages, useSendMessage } from "@/queries/useMessages";
 import { useCredits } from "@/queries/useCredits";
 import { useCancelRun } from "@/queries/useRun";
 import { useActiveRunStore } from "@/stores/activeRun";
+import { useAssistantStreamStore } from "@/stores/assistantStream";
 
 import { Composer } from "./Composer";
 import { ChatTopBar } from "./ChatTopBar";
@@ -29,6 +30,7 @@ type PendingLogicalSend = {
   chatId?: string;
   content: string;
   attachmentIds: string[];
+  planMode: boolean;
   idempotencyKey: string;
 };
 
@@ -44,19 +46,22 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
   const activeHandle = useActiveRunStore((state) => state.handle);
   const setActiveHandle = useActiveRunStore((state) => state.setHandle);
   const clearActiveHandle = useActiveRunStore((state) => state.clearHandle);
+  const clearAssistantStream = useAssistantStreamStore((state) => state.clear);
   const pendingSend = useRef<PendingLogicalSend | null>(null);
+  const wasRealtimeDegraded = useRef(false);
   const [stoppingRunId, setStoppingRunId] = useState<string | null>(null);
 
-  const persistedActiveRunId = useMemo(
+  const persistedActiveMessage = useMemo(
     () =>
       messagesQuery.messages.find(
         (message) =>
           message.role === "ASSISTANT" &&
           message.runId &&
           isMessageWaitingForRun(message.status),
-      )?.runId ?? undefined,
+      ),
     [messagesQuery.messages],
   );
+  const persistedActiveRunId = persistedActiveMessage?.runId ?? undefined;
   const storedHandle =
     currentChatId && activeHandle?.chatId === currentChatId
       ? activeHandle
@@ -85,14 +90,15 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
         }),
         queryClient.invalidateQueries({ queryKey: queryKeys.credits }),
         queryClient.invalidateQueries({ queryKey: queryKeys.creditLedger }),
-      ]);
+      ]).finally(() => clearAssistantStream(terminalRunId));
     },
-    [currentChatId, clearActiveHandle, queryClient],
+    [currentChatId, clearActiveHandle, clearAssistantStream, queryClient],
   );
 
   const monitor = useRunMonitor({
     chatId: currentChatId,
     runId,
+    messageId: storedHandle?.messageId ?? persistedActiveMessage?.id,
     initialRealtimeRunId: storedHandle?.realtimeRunId,
     initialRealtimeToken: storedHandle?.realtimeToken,
     onTerminal: reconcileTerminal,
@@ -106,7 +112,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
     monitor.run?.status === "CANCELLING";
 
   useEffect(() => {
-    if (!currentChatId || !isRunActive) return;
+    if (!currentChatId || !isRunActive || !monitor.isRealtimeDegraded) return;
 
     const reconcileMessages = () => {
       void queryClient.invalidateQueries({
@@ -115,27 +121,47 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
     };
 
     reconcileMessages();
-    const interval = window.setInterval(reconcileMessages, 2_000);
+    const interval = window.setInterval(reconcileMessages, 3_000);
 
     return () => window.clearInterval(interval);
-  }, [currentChatId, isRunActive, queryClient]);
+  }, [currentChatId, isRunActive, monitor.isRealtimeDegraded, queryClient]);
 
-  const handleSend = async (rawContent: string, attachmentIds: string[]) => {
+  useEffect(() => {
+    const recovered =
+      wasRealtimeDegraded.current && !monitor.isRealtimeDegraded;
+    wasRealtimeDegraded.current = monitor.isRealtimeDegraded;
+
+    if (!recovered || !currentChatId || !runId) return;
+
+    void Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages(currentChatId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.run(currentChatId, runId),
+      }),
+    ]);
+  }, [currentChatId, monitor.isRealtimeDegraded, queryClient, runId]);
+
+  const handleSend = async (
+    rawContent: string,
+    attachmentIds: string[],
+    planMode: boolean,
+  ) => {
     const content = rawContent.trim();
     const previousSend = pendingSend.current;
     const idempotencyKey =
       previousSend !== null &&
       previousSend.chatId === currentChatId &&
       previousSend.content === content &&
+      previousSend.planMode === planMode &&
       previousSend.attachmentIds.join("\u0000") === attachmentIds.join("\u0000")
         ? previousSend.idempotencyKey
         : crypto.randomUUID();
     const request: SendMessageRequest = {
       content,
       idempotencyKey,
-      // Kept only for the current backend contract. Planning is not a
-      // user-facing composer mode in the Magica reference.
-      planMode: false,
+      planMode,
       ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
       ...(currentChatId ? { chatId: currentChatId } : {}),
     };
@@ -144,6 +170,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
       chatId: currentChatId,
       content,
       attachmentIds,
+      planMode,
       idempotencyKey,
     };
 
@@ -153,6 +180,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
     setActiveHandle({
       chatId: response.chatId,
       runId: response.runId,
+      messageId: response.messageId,
       ...(response.realtimeRunId
         ? { realtimeRunId: response.realtimeRunId }
         : {}),
@@ -203,7 +231,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
       : "Unavailable";
 
   return (
-    <main className="flex h-dvh min-w-0 overflow-hidden border-t-2 border-[#2e3cff] bg-[#fafafa] text-[#22221f]">
+    <main className="flex h-dvh max-w-full min-w-0 overflow-hidden bg-white text-[#1b1b1b]">
       <Sidebar currentChatId={currentChatId} />
 
       {sidebarOpen ? (
@@ -214,7 +242,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
             className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative h-full w-[286px] shadow-2xl">
+          <div className="relative h-full w-[240px] shadow-2xl">
             <Sidebar
               currentChatId={currentChatId}
               mobile
@@ -224,7 +252,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
         </div>
       ) : null}
 
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex max-w-full min-w-0 flex-1 flex-col overflow-hidden">
         <ChatTopBar
           credits={formattedCredits}
           showFolder={Boolean(currentChatId)}
@@ -253,6 +281,7 @@ export function ChatShell({ chatId, title }: ChatShellProps = {}) {
               isLoadingOlder={messagesQuery.isFetchingNextPage}
               onLoadOlder={() => void messagesQuery.fetchNextPage()}
               runMessage={monitor.run?.userMessage}
+              streamBuffer={monitor.streamBuffer}
               realtimeDegraded={monitor.isRealtimeDegraded}
             />
             <Composer
@@ -287,7 +316,11 @@ function NewTaskWorkspace({
 }: {
   isSending: boolean;
   error: Error | null;
-  onSend: (content: string, attachmentIds: string[]) => Promise<void>;
+  onSend: (
+    content: string,
+    attachmentIds: string[],
+    planMode: boolean,
+  ) => Promise<void>;
   onStop: () => Promise<void>;
 }) {
   const [clock, setClock] = useState("");
@@ -307,19 +340,21 @@ function NewTaskWorkspace({
   }, []);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 md:px-8">
-      <section className="mx-auto pt-[52px] text-center">
+    <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-2 md:px-8">
+      <section className="mx-4 pt-9 text-center md:mx-auto md:pt-[108px]">
         <MagicaMark className="mx-auto" />
-        <p className="mt-4 h-5 text-[12px] text-[#969691]">{clock}</p>
-        <h1 className="mt-2 text-[23px] font-medium tracking-[-0.025em]">
+        <p className="mt-[14px] h-[19.5px] text-[13px] leading-[19.5px] font-medium text-[#585858] md:mt-4 md:h-6 md:text-[14px] md:leading-6 md:font-normal">
+          {clock}
+        </p>
+        <h1 className="mt-4 text-[20px] leading-7 font-bold md:mt-1 md:text-[24px] md:leading-8">
           Your AI worker
         </h1>
-        <p className="mt-1.5 text-[14px] text-[#898984]">
+        <p className="mt-2 text-[14px] leading-6 font-medium text-[#585858] md:mt-1">
           Work at the speed of thought.
         </p>
       </section>
 
-      <div className="mt-[67px]">
+      <div className="mt-12 md:mt-[52px]">
         <Composer
           context="new"
           isSending={isSending}

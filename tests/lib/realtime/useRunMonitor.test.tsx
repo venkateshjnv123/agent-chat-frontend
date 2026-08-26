@@ -1,7 +1,8 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useRunMonitor } from "@/lib/realtime/useRunMonitor";
+import { useAssistantStreamStore } from "@/stores/assistantStream";
 
 const mocks = vi.hoisted(() => ({
   agentRun: vi.fn(),
@@ -19,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@trigger.dev/react-hooks", () => ({
-  useRealtimeRun: mocks.realtime,
+  useRealtimeRunWithStreams: mocks.realtime,
 }));
 
 vi.mock("@/queries/useRun", () => ({
@@ -38,9 +39,11 @@ describe("useRunMonitor", () => {
     mocks.realtime.mockReset().mockReturnValue({
       error: undefined,
       run: undefined,
+      streams: {},
     });
     mocks.refetchToken.mockReset();
     mocks.tokenData = undefined;
+    useAssistantStreamStore.setState({ byRunId: {} });
   });
 
   afterEach(() => vi.useRealTimers());
@@ -96,6 +99,7 @@ describe("useRunMonitor", () => {
     mocks.realtime.mockReturnValue({
       error: new Error("socket closed"),
       run: undefined,
+      streams: {},
     });
     mocks.refetchToken.mockResolvedValue({ error: new Error("token failed") });
 
@@ -120,5 +124,62 @@ describe("useRunMonitor", () => {
     });
 
     expect(mocks.refetchToken).toHaveBeenCalledTimes(3);
+  });
+
+  it("validates and deduplicates typed text/activity streams by sequence", async () => {
+    const delta = {
+      runId: "internal-run-1",
+      messageId: "assistant-1",
+      sequence: 1,
+      turn: 1,
+      text: "Hello",
+    };
+    mocks.realtime.mockReturnValue({
+      error: undefined,
+      run: {
+        metadata: {
+          runId: "internal-run-1",
+          messageId: "assistant-1",
+          currentStep: "Writing response",
+          progress: 0.5,
+        },
+      },
+      streams: {
+        assistantText: [delta, delta, { invalid: true }],
+        assistantActivity: [
+          {
+            runId: "internal-run-1",
+            messageId: "assistant-1",
+            sequence: 1,
+            type: "progress",
+            stage: "responding",
+            currentStep: "Writing response",
+            progress: 0.5,
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useRunMonitor({
+        chatId: "chat-1",
+        runId: "internal-run-1",
+        messageId: "assistant-1",
+        initialRealtimeRunId: "trigger-run-1",
+        initialRealtimeToken: "token-1",
+        onTerminal: vi.fn(),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(result.current.streamBuffer?.text).toBe("Hello"),
+    );
+    expect(result.current.streamBuffer).toEqual(
+      expect.objectContaining({
+        textSequence: 1,
+        activitySequence: 1,
+        metadata: expect.objectContaining({ currentStep: "Writing response" }),
+      }),
+    );
   });
 });

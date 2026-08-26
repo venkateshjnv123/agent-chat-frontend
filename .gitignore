@@ -15,6 +15,7 @@
 /blob-report
 /playwright-report
 /test-results
+/prod-auth-session.mjs
 
 # next.js
 /.next/

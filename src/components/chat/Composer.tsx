@@ -12,7 +12,11 @@ type ComposerProps = {
   isStopping: boolean;
   error: Error | null;
   chatId?: string;
-  onSend: (content: string, attachmentIds: string[]) => Promise<void>;
+  onSend: (
+    content: string,
+    attachmentIds: string[],
+    planMode: boolean,
+  ) => Promise<void>;
   onStop: () => Promise<void>;
 };
 
@@ -83,6 +87,7 @@ export function Composer({
             ? [attachment.attachmentId]
             : [],
         ),
+        false,
       );
       setMessage("");
       setAttachmentMenuOpen(false);
@@ -170,22 +175,15 @@ export function Composer({
     <div
       className={
         isNewTask
-          ? "relative mx-auto w-full max-w-[1100px]"
-          : "shrink-0 bg-gradient-to-t from-[#fafafa] via-[#fafafa] to-transparent px-4 pt-5 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8 md:pb-5"
+          ? "relative mx-auto w-full max-w-[900px]"
+          : "shrink-0 bg-gradient-to-t from-white via-white to-transparent px-3 pt-4 pb-[max(.75rem,env(safe-area-inset-bottom))] md:px-6 md:pb-4"
       }
     >
-      {attachments.length > 0 ? (
-        <AttachmentTray
-          attachments={attachments}
-          onRemove={removeAttachment}
-          compact={!isNewTask}
-        />
-      ) : null}
       <form
-        className={`relative mx-auto flex border border-[#c8c8c5] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition focus-within:border-[#8d8d89] ${
+        className={`relative mx-auto flex w-full max-w-[900px] flex-col overflow-visible border border-[#bdbdbd] bg-white transition focus-within:border-[#8a8a8a] ${
           isNewTask
-            ? "min-h-[156px] w-full flex-col rounded-[30px] px-6 py-5"
-            : "max-w-[1040px] items-end gap-3 rounded-[28px] px-4 py-3"
+            ? "min-h-[132px] rounded-[24px] px-[15px] pt-[15px] pb-3"
+            : "min-h-[84px] rounded-[24px] px-[15px] pt-[15px] pb-3 shadow-[0_8px_28px_rgba(0,0,0,.05)]"
         }`}
         aria-busy={isSending || isStopping}
         onSubmit={(event) => {
@@ -193,6 +191,12 @@ export function Composer({
           void submit();
         }}
       >
+        {attachments.length > 0 ? (
+          <AttachmentTray
+            attachments={attachments}
+            onRemove={removeAttachment}
+          />
+        ) : null}
         <label className="sr-only" htmlFor="message">
           Message
         </label>
@@ -206,68 +210,55 @@ export function Composer({
               void submit();
             }
           }}
-          rows={isNewTask ? 3 : 1}
+          rows={1}
           maxLength={MAX_MESSAGE_LENGTH + 1}
           disabled={isRunActive}
           placeholder={
             isNewTask ? "Assign a task or ask anything..." : "Send a message..."
           }
-          className={`resize-none bg-transparent outline-none placeholder:text-[#a6a6a2] disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`resize-none bg-transparent outline-none placeholder:text-[#777777] disabled:cursor-not-allowed disabled:opacity-60 ${
             isNewTask
-              ? "min-h-[78px] w-full text-[17px] leading-7"
-              : "max-h-40 min-h-10 flex-1 px-1 py-2 text-[15px]"
+              ? "max-h-24 min-h-6 w-full text-[14px] leading-6"
+              : "max-h-40 min-h-10 w-full py-1 text-[14px] leading-6"
           }`}
         />
 
-        <div
-          className={
-            isNewTask ? "mt-auto flex items-center justify-between" : "contents"
-          }
-        >
-          <div
-            className={`items-center gap-1 ${isNewTask ? "flex" : "hidden"}`}
-          >
+        <div className="mt-auto flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-1">
             <button
               type="button"
               aria-label="Add attachment"
               aria-expanded={attachmentMenuOpen}
-              disabled={attachments.length >= 10}
-              onClick={() => setAttachmentMenuOpen((open) => !open)}
-              className="grid size-9 place-items-center rounded-full text-[#5f5f5b] transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={isRunActive || attachments.length >= 10}
+              onClick={() =>
+                isNewTask
+                  ? setAttachmentMenuOpen((open) => !open)
+                  : fileInputRef.current?.click()
+              }
+              className="grid size-8 place-items-center rounded-full text-[#585858] transition hover:bg-[#f7f7f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-35"
             >
-              <LineIcon name="paperclip" className="size-[19px]" />
+              <LineIcon
+                name={isNewTask ? "paperclip" : "plus"}
+                className="size-4"
+              />
             </button>
             <button
               type="button"
               aria-label="Connect tools"
-              className="grid size-9 place-items-center rounded-full text-[#5f5f5b] transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+              className="grid size-8 place-items-center rounded-full text-[#585858] transition hover:bg-[#f7f7f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
             >
-              <LineIcon name="plug" className="size-[19px]" />
+              <LineIcon name="plug" className="size-4" />
             </button>
           </div>
 
-          <div
-            className={`items-center ${isNewTask ? "flex gap-2" : "contents"}`}
-          >
-            {isNewTask ? (
-              <button
-                type="button"
-                aria-label="Voice input"
-                className="grid size-9 place-items-center rounded-full text-[#5f5f5b] transition hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-              >
-                <LineIcon name="mic" className="size-[19px]" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                aria-label="Add attachment"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isRunActive || attachments.length >= 10}
-                className="grid size-10 shrink-0 place-items-center rounded-xl text-black/25 disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                <LineIcon name="plus" className="size-5" />
-              </button>
-            )}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              aria-label="Voice input"
+              className="grid size-8 place-items-center rounded-full text-[#585858] transition hover:bg-[#f7f7f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+            >
+              <LineIcon name="mic" className="size-4" />
+            </button>
 
             {isRunActive ? (
               <button
@@ -275,7 +266,7 @@ export function Composer({
                 aria-label={isStopping ? "Stopping run" : "Stop run"}
                 disabled={isStopping}
                 onClick={() => void onStop().catch(() => undefined)}
-                className="grid size-11 shrink-0 place-items-center rounded-[15px] bg-[#f2070d] text-white transition hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:bg-red-300"
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-[#f2070d] text-white transition hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:bg-red-300"
               >
                 <span
                   aria-hidden="true"
@@ -287,15 +278,15 @@ export function Composer({
                 type="submit"
                 aria-label={isSending ? "Sending message" : "Send message"}
                 disabled={!canSend}
-                className={`grid shrink-0 place-items-center rounded-full bg-[#232320] text-white transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:bg-[#efefed] disabled:text-[#aaa9a5] ${isNewTask ? "size-10" : "size-11"}`}
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-[#2b2b2b] text-white transition hover:bg-[#222] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:bg-transparent disabled:text-[#bdbdbd]"
               >
                 {isSending ? (
                   <span
                     aria-hidden="true"
-                    className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+                    className="size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
                   />
                 ) : (
-                  <LineIcon name="arrow-up" className="size-[19px]" />
+                  <LineIcon name="arrow-up" className="size-4" />
                 )}
               </button>
             )}
@@ -338,7 +329,7 @@ export function Composer({
       />
 
       {!isNewTask ? (
-        <div className="mx-auto mt-2 flex max-w-[1040px] items-start justify-between gap-3 px-1 text-[11px]">
+        <div className="mx-auto mt-2 flex max-w-[900px] items-start justify-between gap-3 px-1 text-[11px]">
           <p className={error ? "text-red-700" : "text-black/35"}>
             {error
               ? error.message
@@ -362,22 +353,17 @@ export function Composer({
 function AttachmentTray({
   attachments,
   onRemove,
-  compact,
 }: {
   attachments: DraftAttachment[];
   onRemove: (localId: string) => void;
-  compact: boolean;
 }) {
   const firstFailure = attachments.find(
     (attachment) => attachment.status === "FAILED",
   );
 
   return (
-    <div
-      className={`mx-auto mb-2 w-full ${compact ? "max-w-[1040px]" : "max-w-[1100px]"}`}
-      aria-label="Attached images"
-    >
-      <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="mb-2 max-w-full min-w-0" aria-label="Attached images">
+      <div className="grid max-w-full grid-cols-[repeat(auto-fill,minmax(60px,76px))] gap-2">
         {attachments.map((attachment) => (
           <div
             key={attachment.localId}

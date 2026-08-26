@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ResolveWaitpointRequest, Waitpoint } from "@/contracts/generated";
 import { formatCreditEstimate } from "@/lib/credits/format";
@@ -19,6 +19,11 @@ const ACTION_LABELS: Record<Resolution, string> = {
   STEP_BY_STEP: "Step by Step",
   REQUEST_CHANGES: "Request Changes",
 };
+const ACTION_ORDER: readonly Resolution[] = [
+  "REQUEST_CHANGES",
+  "STEP_BY_STEP",
+  "RUN_ALL",
+];
 
 export function PlanApprovalCard({
   waitpoint,
@@ -31,14 +36,27 @@ export function PlanApprovalCard({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const resolutionAttempt = useRef<{
+    signature: string;
+    idempotencyKey: string;
+  } | null>(null);
   const canRunAll = waitpoint.supportedResolutions.includes("RUN_ALL");
+  const supportedActions = ACTION_ORDER.filter((resolution) =>
+    waitpoint.supportedResolutions.includes(resolution),
+  );
 
   const submitResolution = async (
     resolution: Resolution,
     submittedFeedback?: string,
   ) => {
     if (!pending || isSubmitting) return;
+
+    const signature = `${resolution}\u0000${submittedFeedback ?? ""}`;
+    const idempotencyKey =
+      resolutionAttempt.current?.signature === signature
+        ? resolutionAttempt.current.idempotencyKey
+        : crypto.randomUUID();
+    resolutionAttempt.current = { signature, idempotencyKey };
 
     try {
       await onResolve({
@@ -80,77 +98,98 @@ export function PlanApprovalCard({
         event.preventDefault();
         void submitResolution("RUN_ALL");
       }}
-      className="overflow-hidden rounded-2xl border border-black/12 bg-white text-left shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
+      className="max-w-full min-w-0 overflow-hidden rounded-xl border border-[#dedede] bg-white text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8a8a8a]"
     >
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-black/[0.02]"
-      >
-        <span
-          aria-hidden="true"
-          className={`grid size-8 shrink-0 place-items-center rounded-xl text-sm ${statusTone(waitpoint.status)}`}
-        >
-          {statusGlyph(waitpoint.status)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-black/80">
+      {pending ? (
+        <div className="border-b border-[#ededed] px-5 py-4">
+          <h3 className="text-[14px] leading-5 font-semibold text-[#1b1b1b]">
             {waitpoint.payload.title}
-          </span>
-          <span className="mt-0.5 block text-xs text-black/45">
-            {statusLabel(waitpoint)}
-          </span>
-        </span>
-        <span
-          aria-hidden="true"
-          className={`text-xs text-black/35 transition ${open ? "rotate-180" : ""}`}
+          </h3>
+          <p className="mt-1 text-[14px] leading-6 text-[#585858]">
+            {waitpoint.payload.overview}
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#fafafa]"
         >
-          ⌄
-        </span>
-      </button>
+          <span
+            aria-hidden="true"
+            className={`grid size-7 shrink-0 place-items-center rounded-[10px] text-sm ${statusTone(waitpoint.status)}`}
+          >
+            {statusGlyph(waitpoint.status)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[14px] font-semibold text-[#1b1b1b]">
+              {waitpoint.payload.title}
+            </span>
+            <span className="mt-0.5 block text-[12px] text-[#777777]">
+              {statusLabel(waitpoint)}
+            </span>
+          </span>
+          <span
+            aria-hidden="true"
+            className={`text-xs text-[#777777] transition ${open ? "rotate-180" : ""}`}
+          >
+            ⌄
+          </span>
+        </button>
+      )}
 
       {open ? (
         <div className="border-t border-black/8">
-          <div className="px-4 py-4">
-            <p className="text-sm leading-6 text-black/65">
-              {waitpoint.payload.overview}
-            </p>
-          </div>
+          {!pending ? (
+            <div className="px-4 py-4">
+              <p className="text-[14px] leading-6 text-[#585858]">
+                {waitpoint.payload.overview}
+              </p>
+            </div>
+          ) : null}
 
-          <ol className="divide-y divide-black/8 border-y border-black/8">
+          <ol className="divide-y divide-[#ededed]">
             {waitpoint.payload.steps.map((step) => (
               <li
-                key={`${waitpoint.id}:step:${step.n}`}
-                className="grid grid-cols-[2rem_minmax(0,1fr)] gap-2 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto]"
+                key={`${waitpoint.id}:step:${step.id}`}
+                className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-2 px-5 py-4 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]"
               >
-                <span className="pt-0.5 text-xs font-medium text-black/45 tabular-nums">
-                  {step.n}
+                <span
+                  aria-label={`Step ${step.n}: ${step.status.toLowerCase()}`}
+                  className={`mt-0.5 grid size-4 place-items-center text-[10px] font-medium tabular-nums ${stepStatusTone(step.status)}`}
+                >
+                  {step.status === "COMPLETED" ? "✓" : step.n}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-black/80">
+                  <p className="text-[14px] leading-5 font-medium text-[#1b1b1b]">
                     {step.title}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-black/50">
+                  <p className="mt-1 max-w-full text-[14px] leading-5 [overflow-wrap:anywhere] break-words text-[#585858]">
                     {step.description}
                   </p>
+                  {step.dependsOn.length > 0 ? (
+                    <p className="mt-1 text-[12px] text-[#777777]">
+                      After {step.dependsOn.join(", ")}
+                    </p>
+                  ) : null}
                 </div>
-                <span className="col-start-2 mt-1 self-start text-xs font-medium text-black/55 tabular-nums sm:col-start-3 sm:row-start-1 sm:mt-0">
+                <span className="col-start-2 mt-1 self-start text-[12px] font-normal text-[#585858] tabular-nums sm:col-start-3 sm:row-start-1 sm:mt-0">
                   {formatCreditEstimate(step.estimateCredits)}
                 </span>
               </li>
             ))}
           </ol>
 
-          <div className="grid gap-3 px-4 py-4">
-            <div className="flex items-center justify-between gap-4 text-sm font-semibold text-black/75">
+          <div className="grid gap-3 border-t border-[#ededed] px-5 py-4">
+            <div className="flex items-center justify-between gap-4 text-[14px] font-medium text-[#1b1b1b]">
               <span>Estimated total</span>
               <span className="shrink-0 tabular-nums">
                 {formatCreditEstimate(waitpoint.payload.totalEstimate)} credits
               </span>
             </div>
             {waitpoint.payload.notes ? (
-              <p className="text-xs leading-5 text-black/55 italic">
+              <p className="text-[14px] leading-5 text-[#1b1b1b] italic">
                 {waitpoint.payload.notes}
               </p>
             ) : null}
@@ -219,12 +258,15 @@ export function PlanApprovalCard({
           ) : null}
 
           {pending ? (
-            <div className="flex flex-col gap-3 border-t border-black/8 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[11px] text-black/40">
-                Focus card, then press Enter to run all
+            <div className="flex flex-col gap-3 border-t border-[#ededed] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[12px] text-[#585858]">
+                <kbd className="mr-1 rounded border border-[#dedede] bg-[#fafafa] px-1.5 py-0.5 text-[10px] text-[#1b1b1b]">
+                  Enter
+                </kbd>
+                run all
               </p>
               <div className="flex flex-wrap justify-end gap-2">
-                {waitpoint.supportedResolutions.map((resolution) => (
+                {supportedActions.map((resolution) => (
                   <button
                     key={resolution}
                     type="button"
@@ -278,6 +320,16 @@ function StatusNotice({ waitpoint }: { waitpoint: Waitpoint }) {
   );
 }
 
+function stepStatusTone(
+  status: Waitpoint["payload"]["steps"][number]["status"],
+) {
+  if (status === "COMPLETED") return "text-emerald-700";
+  if (status === "FAILED") return "text-red-700";
+  if (status === "RUNNING") return "text-blue-700";
+  if (status === "SKIPPED") return "text-[#919191]";
+  return "text-[#585858]";
+}
+
 function statusLabel(waitpoint: Waitpoint) {
   switch (waitpoint.status) {
     case "PENDING":
@@ -317,6 +369,6 @@ function statusTone(status: Waitpoint["status"]) {
 
 function actionClassName(resolution: Resolution) {
   return resolution === "RUN_ALL"
-    ? "rounded-lg bg-[#252520] px-3.5 py-2 text-xs font-medium text-white hover:bg-black disabled:cursor-wait disabled:opacity-50"
-    : "rounded-lg border border-black/12 bg-white px-3.5 py-2 text-xs font-medium text-black/65 hover:bg-black/[0.03] disabled:cursor-wait disabled:opacity-50";
+    ? "h-8 rounded-[10px] bg-[#2b2b2b] px-3.5 text-[12px] font-medium text-white hover:bg-[#222] disabled:cursor-wait disabled:opacity-50"
+    : "h-8 rounded-[10px] border border-[#dedede] bg-white px-3.5 text-[12px] font-medium text-[#1b1b1b] hover:bg-[#f7f7f7] disabled:cursor-wait disabled:opacity-50";
 }

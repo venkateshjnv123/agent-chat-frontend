@@ -27,26 +27,37 @@ export function MessageWaitpoint({ message }: { message: Message }) {
     );
   }
 
-  const waitpoint = waitpointQuery.data;
+  const waitpoints = waitpointQuery.data?.items ?? [];
 
-  if (!waitpoint) return null;
+  if (waitpoints.length === 0) return null;
 
   return (
-    <PlanApprovalCard
-      key={`${waitpoint.id}:${waitpoint.status}`}
-      waitpoint={waitpoint}
-      isSubmitting={resolveMutation.isPending}
-      error={resolveMutation.error}
-      onResolve={(request) =>
-        resolveMutation
-          .mutateAsync({
-            chatId: message.chatId,
-            runId: waitpoint.runId,
-            waitpointId: waitpoint.id,
-            request,
-          })
-          .then(() => undefined)
-      }
-    />
+    <div className="grid gap-3" aria-label="Approval history">
+      {waitpoints.map((waitpoint) => (
+        <PlanApprovalCard
+          key={`${waitpoint.id}:${waitpoint.status}`}
+          waitpoint={waitpoint}
+          isSubmitting={
+            resolveMutation.isPending &&
+            resolveMutation.variables?.waitpointId === waitpoint.id
+          }
+          error={
+            resolveMutation.variables?.waitpointId === waitpoint.id
+              ? resolveMutation.error
+              : null
+          }
+          onResolve={(request) =>
+            resolveMutation
+              .mutateAsync({
+                chatId: message.chatId,
+                runId: waitpoint.runId,
+                waitpointId: waitpoint.id,
+                request,
+              })
+              .then(() => undefined)
+          }
+        />
+      ))}
+    </div>
   );
 }

@@ -22,6 +22,7 @@ const chats = [
 ];
 
 vi.mock("@clerk/nextjs", () => ({
+  useUser: () => ({ user: { fullName: "Venkatesh Patnala" } }),
   UserButton: () => <span>Account menu</span>,
 }));
 

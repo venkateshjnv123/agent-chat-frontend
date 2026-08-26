@@ -1,9 +1,10 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
+import Image from "next/image";
 import Link from "next/link";
 
-import { LineIcon, MagicaMark, type IconName } from "@/components/ui/LineIcon";
+import { LineIcon, type IconName } from "@/components/ui/LineIcon";
 import { formatCreditBalance } from "@/lib/credits/format";
 import { useChats } from "@/queries/useChats";
 import { useCredits } from "@/queries/useCredits";
@@ -36,69 +37,68 @@ export function Sidebar({
 }: SidebarProps) {
   const chats = useChats();
   const credits = useCredits();
+  const { user } = useUser();
 
   return (
     <aside
-      className={`${mobile ? "flex" : "hidden md:flex"} h-full min-h-0 w-[286px] shrink-0 flex-col overflow-hidden rounded-tr-[28px] border-r border-black/8 bg-[#f4f4f2] px-3.5 pt-4 pb-3 text-[#2b2b28]`}
+      className={`${mobile ? "flex h-full w-[240px]" : "my-2 ml-2 hidden h-[calc(100%-1rem)] w-[240px] rounded-xl md:flex"} min-h-0 shrink-0 flex-col overflow-hidden bg-[#fafafa] px-2 pb-2 text-[#1b1b1b]`}
     >
-      <div className="flex h-10 items-center px-2">
+      <div className="flex h-[52px] shrink-0 items-center px-1">
         <Link
           href="/chat"
           onClick={onNavigate}
           aria-label="Magica home"
-          className="flex items-center gap-2.5"
+          className="flex h-8 items-center px-1"
         >
-          <MagicaMark className="size-[23px]" />
-          <span className="text-[20px] font-semibold tracking-[-0.04em]">
-            Magica
-          </span>
+          <Image
+            unoptimized
+            src="https://app.magica.com/galaxy.png"
+            alt="Magica"
+            width={80}
+            height={20}
+            className="h-5 w-20 object-contain object-left"
+          />
         </Link>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             aria-label="Search"
-            className="grid size-8 place-items-center rounded-lg text-[#777772] hover:bg-black/5"
+            className="grid size-7 place-items-center rounded-lg text-[#343434] hover:bg-[#f1f1f1]"
           >
             <LineIcon name="search" className="size-[18px]" />
           </button>
           <button
             type="button"
             aria-label="Collapse sidebar"
-            className="grid size-8 place-items-center rounded-lg text-[#777772] hover:bg-black/5"
+            className="grid size-7 place-items-center rounded-lg text-[#343434] hover:bg-[#f1f1f1]"
           >
             <LineIcon name="panel" className="size-[18px]" />
           </button>
         </div>
       </div>
 
-      <nav className="mt-5 space-y-1" aria-label="Workspace navigation">
+      <nav className="space-y-1" aria-label="Workspace navigation">
         <Link
           href="/chat"
           onClick={onNavigate}
           aria-current={
             activeItem === "chat" && !currentChatId ? "page" : undefined
           }
-          className={`flex h-10 items-center gap-3 rounded-xl px-3 text-[14px] font-medium ${
-            activeItem === "chat" && !currentChatId
-              ? "border border-[#5f5af5] bg-white text-[#3b38c9] shadow-[0_1px_2px_rgba(0,0,0,.04)]"
-              : "hover:bg-black/[0.045]"
-          }`}
+          className="flex h-[34px] items-center gap-2.5 rounded-[10px] px-2 text-[14px] font-medium hover:bg-[#f1f1f1]"
         >
-          <span className="grid size-[19px] place-items-center rounded-full border border-current">
-            <LineIcon name="plus" className="size-3" />
-          </span>
+          <LineIcon name="plus" className="size-4 shrink-0" />
           New task
         </Link>
         {NAV_ITEMS.map((item) => {
           const active = item.label === "Tasks" && activeItem === "tasks";
-          const classes = `flex h-10 w-full items-center gap-3 rounded-xl px-3 text-[14px] transition ${
+          const classes = `flex h-[34px] w-full items-center gap-2.5 rounded-[10px] px-2 text-[14px] transition ${
             active
-              ? "border border-[#5f5af5] bg-white font-medium text-[#3b38c9] shadow-[0_1px_2px_rgba(0,0,0,.04)]"
-              : "text-[#464642] hover:bg-black/[0.04]"
+              ? "bg-[#f1f1f1] font-medium text-[#1b1b1b]"
+              : "text-[#343434] hover:bg-[#f1f1f1]"
           }`;
           const content = (
             <>
-              <LineIcon name={item.icon} className="size-[19px] shrink-0" />
+              <LineIcon name={item.icon} className="size-4 shrink-0" />
               <span>{item.label}</span>
             </>
           );
@@ -121,12 +121,12 @@ export function Sidebar({
         })}
       </nav>
 
-      <section className="mt-6 min-h-0 flex-1 overflow-hidden">
-        <p className="px-3 text-[11px] font-semibold tracking-[0.08em] text-[#92928d] uppercase">
+      <section className="mt-4 min-h-0 flex-1 overflow-hidden">
+        <p className="px-2 text-[12px] leading-4 font-normal text-[#585858]">
           Recent tasks
         </p>
         <nav
-          className="mt-2 max-h-full space-y-0.5 overflow-y-auto"
+          className="mt-2 max-h-full space-y-0.5 overflow-x-hidden overflow-y-auto"
           aria-label="Recent tasks"
         >
           {chats.isPending ? (
@@ -148,10 +148,10 @@ export function Sidebar({
               href={`/chat/${encodeURIComponent(chat.id)}`}
               onClick={onNavigate}
               aria-current={chat.id === currentChatId ? "page" : undefined}
-              className={`block truncate rounded-lg px-3 py-1.5 text-[12px] ${
+              className={`block h-8 truncate rounded-lg px-2 py-1.5 text-[13px] ${
                 chat.id === currentChatId
-                  ? "bg-white font-medium text-black shadow-sm"
-                  : "text-[#777772] hover:bg-black/[0.04] hover:text-black"
+                  ? "bg-[#f1f1f1] font-medium text-[#1b1b1b]"
+                  : "text-[#585858] hover:bg-[#f1f1f1] hover:text-[#1b1b1b]"
               }`}
             >
               {chat.title ?? "Untitled task"}
@@ -170,7 +170,7 @@ export function Sidebar({
         </nav>
       </section>
 
-      <div className="mt-3 shrink-0 border-t border-black/8 pt-3">
+      <div className="mt-3 shrink-0 border-t border-[#ededed] pt-3">
         <button
           type="button"
           className="flex h-8 items-center gap-2 px-2 text-[12px] text-[#686863] hover:text-black"
@@ -222,33 +222,37 @@ export function Sidebar({
           <LineIcon name="users" className="size-4" /> Invite team members{" "}
           <span className="ml-auto">→</span>
         </button>
-        <div className="mt-2 flex items-center gap-2 border-t border-black/8 px-2 pt-3">
-          <div className="flex rounded-lg bg-black/[0.045] p-0.5 text-[#777772]">
+        <div className="mt-2 border-t border-black/8 pt-2">
+          <div className="flex h-8 w-full items-center rounded-xl border border-[#ededed] bg-white p-0.5 text-[#777772]">
             <button
               type="button"
               aria-label="System theme"
-              className="grid size-6 place-items-center rounded-md bg-white shadow-sm"
+              className="grid h-7 flex-1 place-items-center rounded-[10px] bg-[#f7f7f7]"
             >
               <LineIcon name="monitor" className="size-3.5" />
             </button>
             <button
               type="button"
               aria-label="Light theme"
-              className="grid size-6 place-items-center rounded-md"
+              className="grid h-7 flex-1 place-items-center rounded-[10px]"
             >
               <LineIcon name="sun" className="size-3.5" />
             </button>
             <button
               type="button"
               aria-label="Dark theme"
-              className="grid size-6 place-items-center rounded-md"
+              className="grid h-7 flex-1 place-items-center rounded-[10px]"
             >
               ◐
             </button>
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-2 text-[12px] text-[#444440]">
+          <div className="mt-1 flex h-8 min-w-0 items-center rounded-xl border border-[#ededed] bg-white px-2 text-[12px] text-[#1b1b1b]">
             <UserButton />
-            <span className="truncate">Account</span>
+            <span className="min-w-0 flex-1 truncate text-center font-medium">
+              {user?.fullName ??
+                user?.primaryEmailAddress?.emailAddress ??
+                "Account"}
+            </span>
           </div>
         </div>
       </div>

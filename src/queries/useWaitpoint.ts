@@ -2,8 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ResolveWaitpointRequest, Waitpoint } from "@/contracts/generated";
-import { getRunWaitpoint, resolveWaitpoint } from "@/lib/api/waitpoints";
+import type {
+  ResolveWaitpointRequest,
+  WaitpointHistory,
+} from "@/contracts/generated";
+import { getRunWaitpoints, resolveWaitpoint } from "@/lib/api/waitpoints";
 import { useApiClient } from "@/lib/api/useApiClient";
 
 import { queryKeys } from "./queryKeys";
@@ -13,7 +16,7 @@ export function useWaitpoint(runId: string | null, pollWhileActive: boolean) {
 
   return useQuery({
     queryKey: queryKeys.waitpoint(runId ?? ""),
-    queryFn: ({ signal }) => getRunWaitpoint(client, runId ?? "", signal),
+    queryFn: ({ signal }) => getRunWaitpoints(client, runId ?? "", signal),
     enabled: Boolean(runId),
     retry: false,
     staleTime: pollWhileActive ? 0 : Number.POSITIVE_INFINITY,
@@ -39,18 +42,25 @@ export function useResolveWaitpoint() {
     mutationFn: ({ waitpointId, request }: ResolveInput) =>
       resolveWaitpoint(client, waitpointId, request),
     onSuccess: (response, variables) => {
-      queryClient.setQueryData<Waitpoint | null>(
+      queryClient.setQueryData<WaitpointHistory | null>(
         queryKeys.waitpoint(variables.runId),
         (current) =>
           current
             ? {
                 ...current,
-                status: response.status,
-                resolution: response.resolution,
-                resolvedAt:
-                  response.status === "RESOLVED"
-                    ? (current.resolvedAt ?? new Date().toISOString())
-                    : current.resolvedAt,
+                items: current.items.map((waitpoint) =>
+                  waitpoint.id === response.waitpointId
+                    ? {
+                        ...waitpoint,
+                        status: response.status,
+                        resolution: response.resolution,
+                        resolvedAt:
+                          response.status === "RESOLVED"
+                            ? (waitpoint.resolvedAt ?? new Date().toISOString())
+                            : waitpoint.resolvedAt,
+                      }
+                    : waitpoint,
+                ),
               }
             : current,
       );

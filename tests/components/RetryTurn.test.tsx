@@ -72,6 +72,7 @@ describe("RetryTurn", () => {
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("run-1"));
     expect(useActiveRunStore.getState().handle).toEqual({
       chatId: "chat-1",
+      messageId: "assistant-1",
       runId: "run-1",
       realtimeRunId: "trigger-2",
       realtimeToken: "scoped-token-2",
