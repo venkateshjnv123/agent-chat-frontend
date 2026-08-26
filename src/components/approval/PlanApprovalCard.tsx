@@ -36,6 +36,7 @@ export function PlanApprovalCard({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const submissionLocked = useRef(false);
   const resolutionAttempt = useRef<{
     signature: string;
     idempotencyKey: string;
@@ -49,7 +50,9 @@ export function PlanApprovalCard({
     resolution: Resolution,
     submittedFeedback?: string,
   ) => {
-    if (!pending || isSubmitting) return;
+    if (!pending || isSubmitting || submissionLocked.current) return;
+
+    submissionLocked.current = true;
 
     const signature = `${resolution}\u0000${submittedFeedback ?? ""}`;
     const idempotencyKey =
@@ -66,6 +69,8 @@ export function PlanApprovalCard({
       });
     } catch {
       // Mutation state renders error. Keep card interactive for same-key retry.
+    } finally {
+      submissionLocked.current = false;
     }
   };
 
@@ -90,6 +95,8 @@ export function PlanApprovalCard({
           event.key !== "Enter" ||
           event.target !== event.currentTarget ||
           !pending ||
+          showFeedback ||
+          isSubmitting ||
           !canRunAll
         ) {
           return;
@@ -203,6 +210,10 @@ export function PlanApprovalCard({
               >
                 What should change?
               </label>
+              <p className="mt-1 text-[11px] leading-4 text-black/45">
+                Describe a revision to the plan. To approve it unchanged, cancel
+                and choose Run All.
+              </p>
               <textarea
                 id={`plan-feedback-${waitpoint.id}`}
                 value={feedback}
@@ -257,7 +268,7 @@ export function PlanApprovalCard({
             </div>
           ) : null}
 
-          {pending ? (
+          {pending && !showFeedback ? (
             <div className="flex flex-col gap-3 border-t border-[#ededed] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[12px] text-[#585858]">
                 <kbd className="mr-1 rounded border border-[#dedede] bg-[#fafafa] px-1.5 py-0.5 text-[10px] text-[#1b1b1b]">
@@ -292,13 +303,21 @@ export function PlanApprovalCard({
 
           {error ? (
             <p className="border-t border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700">
-              {error.message} Try again; same approval key will be reused.
+              {approvalErrorMessage(error)}
             </p>
           ) : null}
         </div>
       ) : null}
     </section>
   );
+}
+
+function approvalErrorMessage(error: Error) {
+  if (error.message.includes("different decision")) {
+    return "Another approval action is already processing. The current plan will refresh automatically.";
+  }
+
+  return `${error.message} Retry the same action if needed.`;
 }
 
 function StatusNotice({ waitpoint }: { waitpoint: Waitpoint }) {

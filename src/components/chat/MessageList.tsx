@@ -137,8 +137,9 @@ function MessageBubble({
     message.id === streamBuffer.messageId
       ? streamBuffer
       : undefined;
-  const assistantContent =
-    matchingStream && matchingStream.text.length >= message.content.length
+  const assistantContent = matchingStream?.metadata?.waitpointId
+    ? ""
+    : matchingStream && matchingStream.text.length >= message.content.length
       ? matchingStream.text
       : message.content;
   const presentation = prepareMessageContent(

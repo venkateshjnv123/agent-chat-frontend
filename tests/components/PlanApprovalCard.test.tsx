@@ -139,6 +139,55 @@ describe("PlanApprovalCard", () => {
     }
   });
 
+  it("locks rapid approval clicks before mutation state rerenders", async () => {
+    const user = userEvent.setup();
+    let finish: (() => void) | undefined;
+    const onResolve = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    render(
+      <PlanApprovalCard
+        waitpoint={waitpoint()}
+        isSubmitting={false}
+        error={null}
+        onResolve={onResolve}
+      />,
+    );
+
+    const runAll = screen.getByRole("button", { name: "Run All" });
+    await user.click(runAll);
+    await user.click(runAll);
+
+    expect(onResolve).toHaveBeenCalledTimes(1);
+    finish?.();
+  });
+
+  it("hides competing approval actions while requesting changes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PlanApprovalCard
+        waitpoint={waitpoint()}
+        isSubmitting={false}
+        error={null}
+        onResolve={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Request Changes" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Run All" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/To approve it unchanged, cancel and choose Run All/),
+    ).toBeInTheDocument();
+  });
+
   it.each([
     {
       status: "RESOLVED" as const,

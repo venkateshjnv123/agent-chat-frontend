@@ -359,6 +359,42 @@ describe("MessageList", () => {
     expect(screen.getByText("Saved terminal answer")).toBeInTheDocument();
     expect(screen.queryByText("Streaming answer")).not.toBeInTheDocument();
   });
+
+  it("hides transient assistant preamble while plan approval is pending", () => {
+    const pending = message("assistant-approval", 1, "I'll", {
+      runId: "run-approval",
+      status: "STREAMING",
+    });
+    const streamBuffer: AssistantStreamBuffer = {
+      runId: "run-approval",
+      messageId: "assistant-approval",
+      text: "I'll",
+      textSequence: 1,
+      activity: [],
+      activitySequence: 0,
+      metadata: {
+        status: "awaiting_approval",
+        runId: "run-approval",
+        messageId: "assistant-approval",
+        waitpointId: "waitpoint-1",
+      },
+    };
+
+    render(
+      <MessageList
+        messages={[pending]}
+        isLoading={false}
+        error={null}
+        hasOlder={false}
+        isLoadingOlder={false}
+        onLoadOlder={vi.fn()}
+        realtimeDegraded={false}
+        streamBuffer={streamBuffer}
+      />,
+    );
+
+    expect(screen.queryByText("I'll")).not.toBeInTheDocument();
+  });
 });
 
 function message(

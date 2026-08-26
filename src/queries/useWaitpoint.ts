@@ -41,6 +41,19 @@ export function useResolveWaitpoint() {
   return useMutation({
     mutationFn: ({ waitpointId, request }: ResolveInput) =>
       resolveWaitpoint(client, waitpointId, request),
+    onError: (_error, variables) => {
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.waitpoint(variables.runId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.run(variables.chatId, variables.runId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages(variables.chatId),
+        }),
+      ]);
+    },
     onSuccess: (response, variables) => {
       queryClient.setQueryData<WaitpointHistory | null>(
         queryKeys.waitpoint(variables.runId),
