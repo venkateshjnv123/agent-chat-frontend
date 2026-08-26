@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { LineIcon } from "@/components/ui/LineIcon";
+import { ACCEPTED_MIME_TYPES } from "@/contracts/generated";
 import { useAttachmentUploader } from "@/queries/useAttachments";
 
 type ComposerProps = {
@@ -24,6 +25,7 @@ type DraftAttachment = {
   localId: string;
   attachmentId?: string;
   filename: string;
+  mimeType: string;
   previewUrl: string;
   progress: number;
   status: "UPLOADING" | "READY" | "FAILED";
@@ -107,6 +109,7 @@ export function Composer({
       const draft: DraftAttachment = {
         localId,
         filename: file.name,
+        mimeType: file.type,
         previewUrl: URL.createObjectURL(file),
         progress: 0,
         status: "UPLOADING",
@@ -132,7 +135,7 @@ export function Composer({
             error:
               uploadError instanceof Error
                 ? uploadError.message
-                : "Image upload failed.",
+                : "Media upload failed.",
             status: "FAILED",
           });
         })
@@ -321,11 +324,11 @@ export function Composer({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept={ACCEPTED_MIME_TYPES.join(",")}
         multiple
         onChange={(event) => addFiles(event.target.files)}
         className="hidden"
-        aria-label="Upload image"
+        aria-label="Upload media"
       />
 
       {!isNewTask ? (
@@ -362,20 +365,14 @@ function AttachmentTray({
   );
 
   return (
-    <div className="mb-2 max-w-full min-w-0" aria-label="Attached images">
+    <div className="mb-2 max-w-full min-w-0" aria-label="Attached media">
       <div className="grid max-w-full grid-cols-[repeat(auto-fill,minmax(60px,76px))] gap-2">
         {attachments.map((attachment) => (
           <div
             key={attachment.localId}
             className="relative size-[76px] shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm"
           >
-            {/* Blob preview is browser-owned and not suitable for next/image. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={attachment.previewUrl}
-              alt={attachment.filename}
-              className="size-full object-cover"
-            />
+            <DraftAttachmentPreview attachment={attachment} />
             {attachment.status === "UPLOADING" ? (
               <div className="absolute inset-0 grid place-items-center bg-black/45 text-[11px] font-medium text-white">
                 {attachment.progress}%
@@ -406,6 +403,46 @@ function AttachmentTray({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function DraftAttachmentPreview({
+  attachment,
+}: {
+  attachment: DraftAttachment;
+}) {
+  if (attachment.mimeType.startsWith("video/")) {
+    return (
+      <video
+        aria-label={attachment.filename}
+        muted
+        playsInline
+        preload="metadata"
+        src={attachment.previewUrl}
+        className="size-full bg-black object-cover"
+      />
+    );
+  }
+
+  if (attachment.mimeType.startsWith("audio/")) {
+    return (
+      <div
+        aria-label={attachment.filename}
+        className="grid size-full place-items-center bg-[#f5f5f3] px-1 text-center text-[10px] leading-3 text-[#585858]"
+      >
+        Audio
+      </div>
+    );
+  }
+
+  return (
+    // Blob preview is browser-owned and not suitable for next/image.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={attachment.previewUrl}
+      alt={attachment.filename}
+      className="size-full object-cover"
+    />
   );
 }
 

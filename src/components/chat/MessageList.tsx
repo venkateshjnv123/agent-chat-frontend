@@ -358,7 +358,10 @@ function prepareMessageContent(message: Message, content: string) {
   );
 
   if (message.attachments.length > 0) {
-    text = text.replace(/\n+\s*Attached (?:images?|files?)\s*:[\s\S]*$/i, "");
+    text = text.replace(
+      /\n+\s*Attached (?:images?|files?|media)(?:\s*\(in order\))?\s*:[\s\S]*$/i,
+      "",
+    );
   }
 
   text = text.replace(/https?:\/\/[^\s<>()]+/g, (rawUrl) => {

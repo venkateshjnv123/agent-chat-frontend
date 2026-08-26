@@ -151,11 +151,11 @@ export async function uploadAttachmentFile(
 
 function validateFile(file: File) {
   if (!(ACCEPTED_MIME_TYPES as readonly string[]).includes(file.type)) {
-    throw new Error("Use a PNG, JPEG, WebP, or GIF image.");
+    throw new Error("Use a supported image, video, or audio file.");
   }
 
   if (file.size <= 0 || file.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error("Image must be smaller than 10 MB.");
+    throw new Error("Media must be no larger than 512 MiB.");
   }
 }
 
@@ -175,7 +175,7 @@ async function pollUntilTerminal(
 
     if (attachment.status === "READY") return attachment;
     if (attachment.status === "FAILED") {
-      throw new Error(attachment.userMessage ?? "That image could not upload.");
+      throw new Error(attachment.userMessage ?? "That media could not upload.");
     }
 
     await delay(COMPLETION_POLL_MS, signal);

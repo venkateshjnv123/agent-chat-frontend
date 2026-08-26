@@ -1,6 +1,6 @@
 # Galaxy Agent Chat Frontend
 
-Responsive web client for durable AI-agent and media-tool runs. It combines authenticated chat, streamed assistant activity, plan approvals, image uploads, credit history, run cancellation, failure recovery, and task navigation in one Next.js application.
+Responsive web client for durable AI-agent and media-tool runs. It combines authenticated chat, streamed assistant activity, plan approvals, media uploads, credit history, run cancellation, failure recovery, and task navigation in one Next.js application.
 
 ## What it does
 
@@ -9,7 +9,7 @@ Responsive web client for durable AI-agent and media-tool runs. It combines auth
 - Renders persisted messages, streamed assistant text, agent activity, tool cards, attachments, failures, and approval plans.
 - Recovers active runs after reloads and falls back to REST polling when realtime delivery is unavailable.
 - Supports stop, retry, run-all, step-by-step, and request-changes interactions.
-- Uploads supported images directly to Transloadit through backend-signed assemblies.
+- Uploads supported images, videos, and audio directly to Transloadit through backend-signed assemblies; ordered video attachments can be sent directly to the merge-video tool.
 - Displays available credits and a cursor-paginated credit ledger.
 - Provides responsive chat, task-list, usage, sign-in, and sign-up routes.
 
@@ -54,7 +54,7 @@ Trigger.dev Realtime
 
 ### Send and recovery lifecycle
 
-1. The composer validates local limits, uploads selected images, and sends one request with a stable idempotency key.
+1. The composer validates local limits, uploads selected media in display order, and sends one request with a stable idempotency key.
 2. The backend returns chat, message, run, and realtime identifiers. A first send replaces the URL with the newly created chat route.
 3. `useRunMonitor` subscribes to run-scoped text and activity streams. Every incoming payload is checked against generated Zod contracts before rendering.
 4. Stream snapshots remain ephemeral. Persisted messages remain authoritative and are invalidated after terminal events.

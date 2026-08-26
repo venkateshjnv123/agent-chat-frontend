@@ -91,7 +91,7 @@ describe("MessageList", () => {
           message(
             "user-with-image",
             1,
-            "Animate this\n\nAttached images:\n1.",
+            "Animate this\n\nAttached media (in order):\n1.",
             {
               role: "USER",
               attachments: [
@@ -126,7 +126,7 @@ describe("MessageList", () => {
     expect(
       image.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(screen.queryByText(/Attached images/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Attached media/i)).not.toBeInTheDocument();
   });
 
   it("renders a bare generated-media URL as media instead of chat text", () => {
