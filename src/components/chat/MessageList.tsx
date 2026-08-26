@@ -180,9 +180,6 @@ function MessageBubble({
           {isUser && presentation.media.length > 0 ? (
             <InlineMedia items={presentation.media} />
           ) : null}
-          {!isUser && message.runId ? (
-            <MessageWaitpoint message={message} />
-          ) : null}
           {showContent ? (
             <div
               className={`max-w-full min-w-0 overflow-hidden px-4 py-3 text-left text-[14px] leading-6 [overflow-wrap:anywhere] break-words ${
@@ -197,6 +194,9 @@ function MessageBubble({
             >
               <MessageText content={renderedContent} isUser={isUser} />
             </div>
+          ) : null}
+          {!isUser && message.runId ? (
+            <MessageWaitpoint message={message} />
           ) : null}
           {!isUser ? (
             <StepGroup message={message} streamBuffer={matchingStream} />

@@ -252,7 +252,7 @@ describe("MessageList", () => {
     ).toBeTruthy();
   });
 
-  it("renders assistant plan markdown between approval history and execution progress", () => {
+  it("renders assistant plan markdown before approval history and execution progress", () => {
     const rendered = render(
       <MessageList
         messages={[
@@ -297,10 +297,10 @@ describe("MessageList", () => {
 
     expect(plan.tagName).toBe("STRONG");
     expect(
-      approval.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING,
+      plan.compareDocumentPosition(approval) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      plan.compareDocumentPosition(execution) &
+      approval.compareDocumentPosition(execution) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(rendered.container).not.toHaveTextContent("**Plan**");
